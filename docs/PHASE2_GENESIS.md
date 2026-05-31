@@ -1,6 +1,17 @@
 # Phase 2 — Genesis: turning the room scan into a real robot RL environment
 
-**Status:** Proposal. Phase 1 (reconstruction → mesh → Habitat navmesh → photoreal agent video) is complete; this document scopes the Phase 2 upgrade to the **Genesis** stack (Genesis-Embodied-AI).
+**Status:** Steps 1 and 2 (physics) are now IMPLEMENTED; the rest remains proposed. This document scoped the upgrade and is kept for the full plan; the implemented part is summarised here.
+
+> **Implemented (`scripts/genesis/`, evidence in `scripts/genesis/outputs/`):**
+> - genesis-world 1.0.0 initialises on the RTX 4070 Ti SUPER (`gs.cuda`) and CPU. No nvcc / source build needed (bundled `quadrants` JIT). Install gotcha: pin `numpy<2` (genesis pulls numpy 2.x, which breaks the torch 2.2 ABI).
+> - **Step 1 — object drop:** the reconstructed Replica room0 mesh, gravity-aligned (RANSAC floor → floor at z=0), is loaded as a static collider. A rigid sphere (r=0.12 m) dropped from 0.6 m falls under gravity and rests at base z ≈ 0.098 m (floor + radius, within 2 cm) — no tunnelling. Validates mesh import + metric scale + collision + gravity.
+> - **Step 2 — Go2 quadruped:** the Genesis-shipped Go2 URDF (18 DOF) spawns at z=0.42 m and settles to a stable standing base height z ≈ 0.29 m, held for 4 s under PD control. Forward walking produces no net travel without a trained RL policy.
+>
+> **Still open:** a trained Go2 locomotion policy for walking (the policy is in Genesis's GitHub repo, not the pip wheel); the photoreal `genesis-nyx` 3DGS camera (needs CUDA 12.9; our box is 12.1/12.6).
+
+---
+
+The full migration plan below is retained as the roadmap.
 
 ## 1. Motivation
 

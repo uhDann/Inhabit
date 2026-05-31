@@ -56,15 +56,19 @@ questions that matter for a robot, such as clearance, collision margins, and
 reachability, are only well-posed at true scale. A scale-free mesh can render
 correctly and still give wrong answers to all of them.
 
-**5. Embodied use.** The metric mesh is loaded as a navigable environment (a
-Habitat navmesh), and an agent walks the room with its first-person view rendered
-from the Gaussian splat. This is a systems integration on top of the
-real-to-sim-via-splatting line of work
+**5. Embodied use.** The metric mesh is used as a robot environment two ways. In
+Habitat it becomes a navmesh that an agent walks. In Genesis it becomes a rigid-
+body physics collider: a dropped sphere falls under gravity and comes to rest on
+the reconstructed floor at metric scale (within 2 cm of floor + radius), and a
+Go2 quadruped spawns and holds a stable stance on the same floor under PD
+control. This shows the reconstruction supports real physics at true scale, not
+only rendering. It builds on the real-to-sim-via-splatting line of work
 ([EmbodiedSplat](https://arxiv.org/abs/2509.17430),
 [VR-Robo](https://arxiv.org/abs/2502.01536),
-[GaussGym](https://arxiv.org/abs/2510.15352)), not a new simulator. A
-Genesis-based physics and reinforcement-learning version is designed but not yet
-implemented ([docs/PHASE2_GENESIS.md](docs/PHASE2_GENESIS.md)).
+[GaussGym](https://arxiv.org/abs/2510.15352)) as a systems integration, not a new
+simulator. What remains is a trained locomotion policy for forward walking and
+the photoreal Genesis camera; see [docs/PHASE2_GENESIS.md](docs/PHASE2_GENESIS.md)
+and [scripts/genesis/](scripts/genesis).
 
 ### The fusion, precisely
 
@@ -187,7 +191,12 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 
 <p align="center">
   <img src="docs/figures/topdown_path.png" width="50%" alt="agent navigation path over the reconstructed room, top-down"/><br/>
-  <em>The metric mesh is loaded as a Habitat navmesh. Top-down view of a recorded agent trajectory over the reconstructed room.</em>
+  <em>Habitat backend: the metric mesh as a navmesh, with a recorded agent trajectory (top-down).</em>
+</p>
+
+<p align="center">
+  <img src="docs/figures/genesis_physics.png" width="92%" alt="reconstructed room in Genesis with a sphere settling on the floor"/><br/>
+  <em>Genesis backend: the reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right). A Go2 quadruped also spawns and stands stably on the same floor.</em>
 </p>
 
 ## Design choices
@@ -223,8 +232,10 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
   scenes). A real-capture evaluation on MuSHRoom (Faro-laser ground truth) is
   reported separately; real numbers are lower, as expected.
 - **Geometry only.** Semantic labelling is out of scope in this version.
-- **Embodiment is partial.** The Habitat navigation stage is implemented; the
-  Genesis physics-and-RL stage is designed (see `docs/PHASE2_GENESIS.md`).
+- **Embodiment.** Habitat navigation and Genesis rigid-body physics (object drop,
+  Go2 stand) are implemented. Forward locomotion needs a trained Go2 policy, and
+  the photoreal Genesis camera needs CUDA 12.9; both are open
+  (`docs/PHASE2_GENESIS.md`).
 
 ## Repository layout
 
