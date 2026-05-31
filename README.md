@@ -132,12 +132,27 @@ Interior fly-throughs of the recovered meshes for three benchmark scenes
   <img src="docs/figures/fly_room2.gif" width="32%" alt="reconstructed study"/>
 </p>
 
+The three methods and the fusion from one viewpoint, beside the ground-truth
+points:
+
+<p align="center">
+  <img src="docs/figures/qualitative.png" width="100%" alt="PGSR, DN-Splatter, Consensus and ground truth from the same viewpoint"/>
+</p>
+
+On clean, fully-observed scenes the methods are visually close; the differences
+they are measured on (Table 1) are sub-centimetre. The differences are larger on
+cluttered or low-coverage scenes, which is where the fusion helps most.
+
 For reference, the Gaussian splat used as the appearance model reaches 32.3 PSNR
 on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result on
 that scene. This is a check that the front end is competitive, not a headline
 result.
 
 ## How it works
+
+<p align="center">
+  <img src="docs/figures/pipeline.png" width="92%" alt="system pipeline: video to ingest to three reconstructors to consensus fusion to benchmark and embodiment"/>
+</p>
 
 ```
 phone video
