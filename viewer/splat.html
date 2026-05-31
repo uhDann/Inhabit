@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>vid2scene — Gaussian splat</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+  #hud { position: fixed; top: 10px; left: 12px; color: #ccc; font-size: 13px;
+         background: rgba(0,0,0,.45); padding: 6px 10px; border-radius: 6px; z-index: 10; }
+</style>
+</head>
+<body>
+<div id="hud">vid2scene · Gaussian splat (472k) · drag to orbit · scroll to zoom</div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "@mkkellogg/gaussian-splats-3d": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+}}
+</script>
+<script type="module">
+import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+
+const viewer = new GaussianSplats3D.Viewer({
+  'sharedMemoryForWorkers': false,        // no special COOP/COEP headers needed
+  'cameraUp': [0, -1, 0],                 // OpenCV world is Y-down
+  'initialCameraPosition': [2.6, -1.6, 5.2],
+  'initialCameraLookAt': [1.345, -0.282, 0.154],
+  'sphericalHarmonicsDegree': 0,
+});
+
+viewer.addSplatScene('../runs/room0_ingest/splat.ply', {
+  'format': GaussianSplats3D.SceneFormat.Ply,
+  'showLoadingUI': true,
+  'progressiveLoad': false,
+}).then(() => viewer.start())
+  .catch((e) => {
+    document.getElementById('hud').textContent = 'load error: ' + e;
+    console.error(e);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>vid2scene — mesh compare (DN-Splatter ⨯ MonoSDF)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden;
+               font-family: system-ui, sans-serif; color: #ddd; }
+  #hud  { position: fixed; top: 10px; left: 12px; background: rgba(0,0,0,.55);
+          padding: 8px 10px; border-radius: 6px; font-size: 13px; z-index: 10;
+          line-height: 1.35; max-width: 340px; }
+  #hud h1 { margin: 0 0 6px; font-size: 13px; letter-spacing: .02em; }
+  #hud label { display: block; cursor: pointer; user-select: none; padding: 2px 0; }
+  #hud input { vertical-align: middle; margin-right: 6px; }
+  #hud .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+                 vertical-align: middle; margin: 0 6px 1px 4px; }
+  #hud .meta { color: #999; font-size: 11px; margin-top: 6px; }
+  #status { position: fixed; bottom: 10px; left: 12px; background: rgba(0,0,0,.45);
+            padding: 4px 8px; border-radius: 6px; font-size: 12px; color: #bbb; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <h1>vid2scene · mesh compare</h1>
+  <label><input type="checkbox" id="t_cons" checked><span class="swatch" style="background:#e0b050;"></span>Consensus (PGSR + DN-Splatter gap-fill)</label>
+  <label><input type="checkbox" id="t_uni"         ><span class="swatch" style="background:#d0a060;"></span>Unified (PGSR + Poisson close)</label>
+  <label><input type="checkbox" id="t_pgsr"        ><span class="swatch" style="background:#88bb88;"></span>PGSR (textured, planar-clean)</label>
+  <label><input type="checkbox" id="t_dn"          ><span class="swatch" style="background:#c2a878;"></span>DN-Splatter (textured, open shell)</label>
+  <label><input type="checkbox" id="t_mono"        ><span class="swatch" style="background:#cc8888;"></span>MonoSDF (watertight, smooth)</label>
+  <label><input type="checkbox" id="t_wire"        ><span class="swatch" style="background:#888888;"></span>MonoSDF wireframe</label>
+  <div class="meta">drag to orbit · scroll to zoom · right-drag to pan<br>
+    Unified: PGSR texture + Poisson-filled gaps, 350k tris<br>
+    PGSR: 300k tris, from 5.2M (COLMAP frame)<br>
+    DN-Splatter: 300k tris, from 10.5M (nerfstudio frame)<br>
+    MonoSDF: 200k tris, from 3.1M (watertight)</div>
+</div>
+<div id="status">loading…</div>
+
+<script type="importmap">
+{ "imports": {
+  "three":          "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PLYLoader   } from 'three/addons/loaders/PLYLoader.js';
+
+const STATUS = document.getElementById('status');
+const setStatus = (s) => { STATUS.textContent = s; };
+
+// Scene / camera / renderer ---------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+// COLMAP convention is Y-down (OpenCV); three.js defaults to Y-up. Setting
+// camera.up = (0,-1,0) matches splat_ref.html and keeps OrbitControls aware.
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 5000);
+camera.up.set(0, -1, 0);
+camera.position.set(2.6, -1.4, 2.6);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0, 0);
+
+// Lights ----------------------------------------------------------------------
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 0.95); key.position.set(2, 4, 3); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(-3, 1, -2); scene.add(fill);
+
+// Mesh holders ----------------------------------------------------------------
+let dnMesh = null, monoMesh = null, monoWire = null, pgsrMesh = null, uniMesh = null, consMesh = null;
+let modelGroup = new THREE.Group(); scene.add(modelGroup);
+
+// Inverse of nerfstudio's coolermap dataparser_transforms.json for the
+// Mip-NeRF 360 `room` run:
+//   forward  T: [[1,0,0,0],[0,0,1,0],[0,-1,0,0]]   (COLMAP -> nerfstudio)
+//   inverse   : [[1,0,0,0],[0,0,-1,0],[0,1,0,0]]   (nerfstudio -> COLMAP)
+// Applied to DN-Splatter's geometry so both meshes live in COLMAP world.
+// (column-major order in THREE.Matrix4.set, but .set() takes ROW-major args.)
+const T_DN_TO_COLMAP = new THREE.Matrix4().set(
+  1, 0,  0, 0,
+  0, 0, -1, 0,
+  0, 1,  0, 0,
+  0, 0,  0, 1
+);
+
+// PLY loaders -----------------------------------------------------------------
+const loader = new PLYLoader();
+
+function loadPLY(url, makeMaterial) {
+  return new Promise((resolve, reject) => {
+    loader.load(url,
+      (geom) => {
+        geom.computeVertexNormals();
+        resolve(new THREE.Mesh(geom, makeMaterial()));
+      },
+      (xhr) => {
+        const pct = xhr.lengthComputable ? Math.round(100 * xhr.loaded/xhr.total) + '%' : (xhr.loaded/1e6).toFixed(1) + ' MB';
+        setStatus(`loading ${url.split('/').pop()} ${pct}`);
+      },
+      reject);
+  });
+}
+
+const dnURL   = '../runs/dnsplat_room/mesh/room_dn_decim.ply';
+const monoURL = '../runs/monosdf_room/monosdf_decim.ply';
+const pgsrURL = '../runs/pgsr_room/pgsr_decim.ply';
+const uniURL  = '../runs/unified_room.ply';
+const consURL = '../runs/consensus_room.ply';
+
+(async () => {
+  try {
+    // Consensus, Unified, PGSR and MonoSDF are all in COLMAP world. DN-Splatter
+    // is in the nerfstudio frame, so it gets T_DN_TO_COLMAP first. Then a single
+    // shared view transform (centre + scale) is applied to all of them.
+    setStatus('loading Consensus…');
+    consMesh = await loadPLY(consURL, () => new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0.0, flatShading: false, side: THREE.DoubleSide }));
+    consMesh.geometry.computeBoundingBox();
+    modelGroup.add(consMesh);
+
+    setStatus('loading Unified…');
+    uniMesh = await loadPLY(uniURL, () => new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0.0, flatShading: false, side: THREE.DoubleSide }));
+    uniMesh.geometry.computeBoundingBox();
+    uniMesh.visible = false;
+    modelGroup.add(uniMesh);
+
+    setStatus('loading PGSR…');
+    pgsrMesh = await loadPLY(pgsrURL, () => new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0.0, flatShading: false, side: THREE.DoubleSide }));
+    pgsrMesh.geometry.computeBoundingBox();
+    pgsrMesh.visible = false;
+    modelGroup.add(pgsrMesh);
+
+    setStatus('loading DN-Splatter…');
+    dnMesh = await loadPLY(dnURL, () => new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0.0, flatShading: false, side: THREE.DoubleSide }));
+    dnMesh.geometry.applyMatrix4(T_DN_TO_COLMAP);   // nerfstudio -> COLMAP
+    dnMesh.geometry.computeBoundingBox();
+    dnMesh.visible = false;
+    modelGroup.add(dnMesh);
+
+    setStatus('loading MonoSDF…');
+    monoMesh = await loadPLY(monoURL, () => new THREE.MeshStandardMaterial({
+      color: 0xcc8888, roughness: 0.55, metalness: 0.0, flatShading: false,
+      transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+    monoMesh.geometry.computeBoundingBox();
+    monoMesh.visible = false;
+    modelGroup.add(monoMesh);
+
+    // Shared view transform from PGSR's bbox (the actual observed room, in
+    // COLMAP world). All three meshes get the same centre+scale so they
+    // overlap in viewer space.
+    const bb  = pgsrMesh.geometry.boundingBox;
+    const c   = bb.getCenter(new THREE.Vector3());
+    const ext = bb.getSize(new THREE.Vector3());
+    const s   = 3.0 / Math.max(ext.x, ext.y, ext.z);
+    const M_view = new THREE.Matrix4()
+      .makeScale(s, s, s)
+      .multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    consMesh.geometry.applyMatrix4(M_view);
+    uniMesh.geometry.applyMatrix4(M_view);
+    pgsrMesh.geometry.applyMatrix4(M_view);
+    dnMesh.geometry.applyMatrix4(M_view);
+    monoMesh.geometry.applyMatrix4(M_view);
+    consMesh.geometry.computeBoundingSphere();
+    uniMesh.geometry.computeBoundingSphere();
+    pgsrMesh.geometry.computeBoundingSphere();
+    dnMesh.geometry.computeBoundingSphere();
+    monoMesh.geometry.computeBoundingSphere();
+
+    // Wireframe overlay shares the (now-aligned) MonoSDF geometry.
+    monoWire = new THREE.Mesh(monoMesh.geometry,
+      new THREE.MeshBasicMaterial({ color: 0x888888, wireframe: true,
+                                    opacity: 0.30, transparent: true,
+                                    depthWrite: false }));
+    monoWire.visible = false;
+    modelGroup.add(monoWire);
+
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    setStatus(`loaded. PGSR ${(pgsrMesh.geometry.index.count/3)|0} · DN ${(dnMesh.geometry.index.count/3)|0} · MonoSDF ${(monoMesh.geometry.index.count/3)|0} tris · COLMAP-aligned`);
+  } catch (e) {
+    setStatus('load error: ' + (e && e.message ? e.message : e));
+    console.error(e);
+  }
+})();
+
+// Toggle wiring ---------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+$('t_cons').addEventListener('change', (e) => { if (consMesh) consMesh.visible = e.target.checked; });
+$('t_uni' ).addEventListener('change', (e) => { if (uniMesh)  uniMesh.visible  = e.target.checked; });
+$('t_pgsr').addEventListener('change', (e) => { if (pgsrMesh) pgsrMesh.visible = e.target.checked; });
+$('t_dn'  ).addEventListener('change', (e) => { if (dnMesh)   dnMesh.visible   = e.target.checked; });
+$('t_mono').addEventListener('change', (e) => { if (monoMesh) monoMesh.visible = e.target.checked; });
+$('t_wire').addEventListener('change', (e) => { if (monoWire) monoWire.visible = e.target.checked; });
+
+// Resize / animate ------------------------------------------------------------
+addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+(function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

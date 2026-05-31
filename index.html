@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>vid2scene — phone video → metric 3D → a room a robot can explore</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0d0f12; color: #e6e8ec; font-family: system-ui, -apple-system, sans-serif; line-height: 1.55; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 22px 80px; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 38px 0 12px; border-bottom: 1px solid #23262c; padding-bottom: 6px; }
+  .tag { color: #9aa3ad; font-size: 16px; margin: 0 0 22px; }
+  a { color: #6cc4ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; }
+  .card { background: #14171c; border: 1px solid #23262c; border-radius: 10px; padding: 16px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0 0 12px; color: #aab2bd; font-size: 14px; }
+  .btn { display: inline-block; background: #1f6feb; color: #fff; padding: 7px 13px; border-radius: 7px; font-size: 14px; }
+  .btn:hover { background: #2b7bff; text-decoration: none; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 6px; }
+  th, td { border: 1px solid #23262c; padding: 6px 10px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  .best { color: #7ee787; font-weight: 600; }
+  img { max-width: 100%; border-radius: 8px; border: 1px solid #23262c; }
+  .muted { color: #8b939d; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>vid2scene</h1>
+  <p class="tag">Phone video → <b>metric</b> 3D reconstruction → a room a <b>robot can explore</b>.</p>
+
+  <img src="docs/figures/compare.gif" alt="left: original video — right: reconstruction" />
+  <p class="muted">Left: original phone video. Right: our reconstruction, rendered along the same path.</p>
+
+  <h2>Interactive viewers (live)</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>4 methods + consensus</h3>
+      <p>PGSR · DN-Splatter · MonoSDF · the consensus fusion, aligned in one frame. Toggle to compare.</p>
+      <a class="btn" href="viewer/mesh_compare.html">Open viewer →</a>
+    </div>
+    <div class="card">
+      <h3>Reconstruction vs ground truth</h3>
+      <p>Our reconstruction toggled against the Replica ground-truth mesh (Chamfer 0.62&nbsp;cm).</p>
+      <a class="btn" href="viewer/replica_room0.html">Open viewer →</a>
+    </div>
+    <div class="card">
+      <h3>Reference Gaussian splat</h3>
+      <p>The PSNR-32.3 splat (within 0.7&nbsp;dB of SOTA on this scene).</p>
+      <a class="btn" href="viewer/splat_ref.html">Open viewer →</a>
+    </div>
+  </div>
+
+  <h2>Quality vs ground truth (Replica, visibility-culled · cm / F-score@5cm)</h2>
+  <table>
+    <tr><th>Method</th><th>Accuracy ↓</th><th>Completion ↓</th><th>Chamfer-L1 ↓</th><th>F-score ↑</th></tr>
+    <tr><td>PGSR</td><td>1.13</td><td>7.60</td><td>4.37</td><td>0.898</td></tr>
+    <tr><td class="best">DN-Splatter</td><td class="best">0.57</td><td class="best">6.14</td><td class="best">3.36</td><td class="best">0.936</td></tr>
+    <tr><td>Consensus (ours)</td><td>1.07</td><td>6.47</td><td>3.77</td><td>0.913</td></tr>
+  </table>
+  <p class="muted">5-scene average. Sub-centimetre accuracy. Full protocol + per-scene table in the repo's <code>docs/BENCHMARK.md</code>.</p>
+
+  <h2>An agent explores it</h2>
+  <img src="docs/figures/explore_agent.gif" style="max-width:62%" alt="agent walking the reconstructed room" />
+  <p class="muted">A navigation agent walks the metric reconstruction; its camera is rendered photorealistically from the splat. The embodied (Genesis) upgrade is designed in <code>docs/PHASE2_GENESIS.md</code>.</p>
+
+  <h2>Code</h2>
+  <p>Repo &amp; full write-up on GitHub — see the <a href="https://github.com/uhDann/Inhabit">repo</a>, <code>docs/ARCHITECTURE.md</code>, and <code>docs/BENCHMARK.md</code>.</p>
+</div>
+</body>
+</html>

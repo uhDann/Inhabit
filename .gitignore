@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Run artifacts / large outputs
+runs/
+*.ply
+*.splat
+*.spz
+*.glb
+*.ckpt
+
+# Media (keep small curated examples only via force-add)
+examples/*.mp4
+!examples/.gitkeep
+
+.DS_Store
+
+# Internal-only positioning notes (never publish)
+/research/

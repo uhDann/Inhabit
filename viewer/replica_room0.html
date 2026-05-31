@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>vid2scene — Replica room0 (benchmark: GT vs reconstruction)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden;
+               font-family: system-ui, sans-serif; color: #ddd; }
+  #hud { position: fixed; top: 10px; left: 12px; background: rgba(0,0,0,.6);
+         padding: 8px 10px; border-radius: 6px; font-size: 13px; z-index: 10; line-height: 1.4; max-width: 330px; }
+  #hud h1 { margin: 0 0 6px; font-size: 13px; }
+  #hud label { display: block; cursor: pointer; user-select: none; padding: 2px 0; }
+  #hud input { vertical-align: middle; margin-right: 6px; }
+  #hud .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 6px 1px 4px; }
+  #hud .meta { color: #9aa; font-size: 11px; margin-top: 7px; }
+  #status { position: fixed; bottom: 10px; left: 12px; background: rgba(0,0,0,.45); padding: 4px 8px; border-radius: 6px; font-size: 12px; color: #bbb; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h1>Replica room0 · GT-mesh benchmark</h1>
+  <label><input type="checkbox" id="t_dn"   checked><span class="sw" style="background:#7ec8e3;"></span>DN-Splatter (best: Chamfer 0.62cm, F 0.997)</label>
+  <label><input type="checkbox" id="t_cons"        ><span class="sw" style="background:#e0b050;"></span>Consensus (Chamfer 1.48cm, F 0.972)</label>
+  <label><input type="checkbox" id="t_gt"          ><span class="sw" style="background:#88dd88;"></span>Ground-truth mesh</label>
+  <div class="meta">drag orbit · scroll zoom · right-drag pan<br>
+    All three in the Replica world frame (no transform).<br>
+    Toggle DN vs GT to see how close the reconstruction is.</div>
+</div>
+<div id="status">loading…</div>
+
+<script type="importmap">
+{ "imports": {
+  "three":         "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PLYLoader }     from 'three/addons/loaders/PLYLoader.js';
+
+const setStatus = (s) => document.getElementById('status').textContent = s;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x111111);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 5000);
+camera.up.set(0,-1,0); camera.position.set(2.5,-1.5,2.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const k = new THREE.DirectionalLight(0xffffff,0.9); k.position.set(2,4,3); scene.add(k);
+const f = new THREE.DirectionalLight(0xffffff,0.4); f.position.set(-3,1,-2); scene.add(f);
+
+const group = new THREE.Group(); scene.add(group);
+let dn=null, cons=null, gt=null;
+const loader = new PLYLoader();
+const load = (url, mat) => new Promise((res, rej) => loader.load(url, g => {
+  g.computeVertexNormals(); res(new THREE.Mesh(g, mat));
+}, x => setStatus(`loading ${url.split('/').pop()} ${(x.loaded/1e6).toFixed(1)}MB`), rej));
+
+(async () => {
+  try {
+    dn = await load('../runs/replica_room0/r0_dn.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.95, side:THREE.DoubleSide}));
+    dn.geometry.computeBoundingBox(); group.add(dn);
+    cons = await load('../runs/replica_room0/r0_cons.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.95, side:THREE.DoubleSide}));
+    cons.visible=false; group.add(cons);
+    gt = await load('../runs/replica_room0/r0_gt.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.9, side:THREE.DoubleSide}));
+    gt.visible=false; group.add(gt);
+
+    // shared centering from DN bbox (all already in the same Replica world frame)
+    const bb=dn.geometry.boundingBox, c=bb.getCenter(new THREE.Vector3()), e=bb.getSize(new THREE.Vector3());
+    const s=3.0/Math.max(e.x,e.y,e.z);
+    const M=new THREE.Matrix4().makeScale(s,s,s).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
+    for (const m of [dn,cons,gt]) { m.geometry.applyMatrix4(M); m.geometry.computeBoundingSphere(); }
+    controls.target.set(0,0,0); controls.update();
+    setStatus(`loaded · DN ${(dn.geometry.index.count/3)|0} · Consensus ${(cons.geometry.index.count/3)|0} tris`);
+  } catch(e){ setStatus('load error: '+(e.message||e)); console.error(e); }
+})();
+
+const $=id=>document.getElementById(id);
+$('t_dn').onchange   = e => { if(dn)   dn.visible   = e.target.checked; };
+$('t_cons').onchange = e => { if(cons) cons.visible = e.target.checked; };
+$('t_gt').onchange   = e => { if(gt)   gt.visible   = e.target.checked; };
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+(function tick(){ requestAnimationFrame(tick); controls.update(); renderer.render(scene,camera); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vid2scene"
+version = "0.2.0"
+description = "Phone video -> metric multi-method 3D reconstruction + consensus fusion -> GT-mesh benchmark -> robot-explorable world."
+requires-python = ">=3.10"
+# Base deps cover the laptop-runnable CPU stages (ingest, fuse, benchmark, viz,
+# embodied export). The GPU reconstruction stage (PGSR/DN-Splatter/MonoSDF) uses
+# the upstream repos' own environments — see scripts/remote/ and docs/ARCHITECTURE.md.
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",   # ingest: frame selection / blur gate
+    "open3d>=0.17",         # fuse / viz / embodied: mesh ops, Poisson, decimation
+    "scipy>=1.10",          # fuse: KDTree gap-gating
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+vid2scene = "vid2scene.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
