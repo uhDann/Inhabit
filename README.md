@@ -66,6 +66,22 @@ real-to-sim-via-splatting line of work
 Genesis-based physics and reinforcement-learning version is designed but not yet
 implemented ([docs/PHASE2_GENESIS.md](docs/PHASE2_GENESIS.md)).
 
+### The fusion, precisely
+
+Given a trusted backbone mesh `B`, a donor mesh `D`, and a distance threshold `tau`:
+
+```
+keep = { d in vertices(D) : dist(d, nearest vertex of B) > tau }   # donor fills only B's holes
+S    = oriented, coloured points of B  ∪  keep
+M    = ScreenedPoisson(S), then trim the lowest-density vertices and keep the
+       largest connected component
+```
+
+`tau` controls how aggressively the donor fills (smaller `tau` borrows more).
+The gate is what prevents the doubled-surface artifact: where `B` already has a
+surface, the donor is ignored, so two biased surfaces are never averaged.
+Implementation: [`src/vid2scene/fuse/consensus.py`](src/vid2scene/fuse/consensus.py).
+
 ## Results
 
 Table 1 reports reconstruction accuracy against Replica ground-truth meshes,
@@ -175,6 +191,26 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
   of GPU training, so the training drivers live in
   [`scripts/remote/`](scripts/remote) and are documented rather than hidden.
 
+## Limitations
+
+- **Coverage.** Surfaces the camera never observed cannot be recovered. The
+  pipeline either fills them by interpolation (screened Poisson) or leaves them
+  open, and the choice is stated per result. This is a property of single-pass
+  capture, not of any one method.
+- **The fusion is conditional.** The gated consensus improves its backbone and
+  helps most on cluttered or low-coverage scenes, but it does not beat the
+  strongest single method on clean, fully-observed scenes. It trades a little
+  accuracy for completeness rather than improving both.
+- **Metric scale depends on the input.** Real-world units come from the
+  capture's poses or depth priors (ARKit or sensor depth). A purely monocular
+  capture with no scale cue is recovered only up to a global scale factor.
+- **Benchmark is synthetic.** The ground-truth numbers are on Replica (rendered
+  scenes). A real-capture evaluation on MuSHRoom (Faro-laser ground truth) is
+  reported separately; real numbers are lower, as expected.
+- **Geometry only.** Semantic labelling is out of scope in this version.
+- **Embodiment is partial.** The Habitat navigation stage is implemented; the
+  Genesis physics-and-RL stage is designed (see `docs/PHASE2_GENESIS.md`).
+
 ## Repository layout
 
 ```
@@ -187,3 +223,25 @@ runs/            outputs and the bundled ground-truth metrics (replica_eval/)
 ```
 
 Start at [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## References
+
+Reconstruction and surface methods:
+- Chen et al. *PGSR: Planar-based Gaussian Splatting Reconstruction.* TVCG 2024. [arXiv:2406.06521](https://arxiv.org/abs/2406.06521)
+- Turkulainen et al. *DN-Splatter: Depth and Normal Priors for Gaussian Splatting.* WACV 2025. [arXiv:2403.17822](https://arxiv.org/abs/2403.17822)
+- Yu et al. *MonoSDF: Exploring Monocular Geometric Cues for Neural Implicit Surface Reconstruction.* NeurIPS 2022. [arXiv:2206.00665](https://arxiv.org/abs/2206.00665)
+- Kazhdan and Hoppe. *Screened Poisson Surface Reconstruction.* ACM ToG 2013.
+- Wang et al. *GO-Surf.* 3DV 2022. [arXiv:2206.14735](https://arxiv.org/abs/2206.14735)
+- Li et al. *Neuralangelo.* CVPR 2023.
+
+Embodied / real-to-sim:
+- Khanna et al. *EmbodiedSplat.* ICCV 2025. [arXiv:2509.17430](https://arxiv.org/abs/2509.17430)
+- *VR-Robo.* RA-L 2025. [arXiv:2502.01536](https://arxiv.org/abs/2502.01536)
+- *GaussGym.* 2025. [arXiv:2510.15352](https://arxiv.org/abs/2510.15352)
+- Genesis-Embodied-AI. *Genesis.* https://github.com/Genesis-Embodied-AI/genesis-world
+
+Datasets:
+- Straub et al. *The Replica Dataset.* 2019.
+- Ren et al. *MuSHRoom: Multi-Sensor Hybrid Room Dataset.* WACV 2024.
+- Barron et al. *Mip-NeRF 360.* CVPR 2022.
+

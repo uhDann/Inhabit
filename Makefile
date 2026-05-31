@@ -9,6 +9,9 @@ help:            ## show this help
 install:         ## pip install the package (CPU stages)
 	pip install -e .
 
+test:            ## run the unit tests
+	pytest tests/ -q
+
 ingest:          ## select keyframes from a video: make ingest VIDEO=clip.mp4 OUT=runs/ing
 	vid2scene ingest $(VIDEO) --out $(OUT)
 
