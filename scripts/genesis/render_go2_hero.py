@@ -30,13 +30,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mesh", default="/cs/student/projects3/2023/dkozlov/genesis-work/room0_aligned_decim.obj")
     ap.add_argument("--outdir", default="/cs/student/projects3/2023/dkozlov/genesis-work/hero")
-    ap.add_argument("--x", type=float, default=5.0)
-    ap.add_argument("--y", type=float, default=0.5)
+    ap.add_argument("--x", type=float, default=1.0)        # verified-clear open-floor spot
+    ap.add_argument("--y", type=float, default=1.0)
     ap.add_argument("--res_w", type=int, default=960)
     ap.add_argument("--res_h", type=int, default=720)
     ap.add_argument("--frames", type=int, default=48)
-    ap.add_argument("--radius", type=float, default=2.0)   # camera distance from robot
-    ap.add_argument("--eye_h", type=float, default=1.0)    # camera eye height
+    ap.add_argument("--radius", type=float, default=1.6)   # camera distance from robot
+    ap.add_argument("--eye_h", type=float, default=0.6)    # camera eye height (looks down)
+    ap.add_argument("--fov", type=float, default=42)
+    ap.add_argument("--hero_only", action="store_true")
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
@@ -49,17 +51,28 @@ def main():
     sc.add_entity(gs.morphs.Mesh(file=args.mesh, fixed=True, collision=True, convexify=False))
     robot = sc.add_entity(gs.morphs.URDF(file=GO2_URDF, pos=(args.x, args.y, 0.42)))
 
+    # Soft fill light above the robot so the dark Go2 body reads against the floor.
+    try:
+        sc.add_light(pos=(args.x, args.y, 2.4), dir=(0, 0, -1),
+                     color=(1.0, 0.98, 0.95), intensity=6.0, directional=False,
+                     castshadow=True, cutoff=70.0)
+    except Exception as e:
+        print(f"[hero] add_light skipped: {e}")
+
     # Aim the look-at at the robot body (~0.25 m up). The recognizable furniture
     # (sofa/chairs/window) is toward lower x / higher y, so the default 3/4 hero
     # azimuth looks back across the robot toward that side of the room.
-    look = (args.x, args.y, 0.27)
-    az0 = math.radians(135)  # 3/4 view, camera behind-right looking toward furniture
+    look = (args.x, args.y, 0.23)   # aim at robot body center
+    # Furniture is at +x (centroid ~3.1) and the open floor is at -x, so put the camera
+    # on the -x (open) side looking back toward +x: robot foreground, sofa/chairs/window
+    # behind. ~200 deg gives a 3/4 view from the open floor.
+    az0 = math.radians(200)
     cam = sc.add_camera(
         res=(args.res_w, args.res_h),
         pos=(args.x + args.radius * math.cos(az0),
              args.y + args.radius * math.sin(az0),
              args.eye_h),
-        lookat=look, fov=45, GUI=False,
+        lookat=look, fov=args.fov, GUI=False,
     )
     sc.build()
 
@@ -84,6 +97,10 @@ def main():
     hero_path = os.path.join(args.outdir, "go2_hero.png")
     Image.fromarray(rgb).save(hero_path)
     print(f"[hero] wrote {hero_path}  shape={rgb.shape}")
+
+    if args.hero_only:
+        print("[hero] hero_only set, skipping turntable")
+        return
 
     # --- Turntable: orbit camera around the standing robot ---
     frames = []

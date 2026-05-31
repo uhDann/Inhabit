@@ -51,6 +51,10 @@ $ENVS/genesis/bin/pip install "numpy<2"              # ABI fix for torch 2.2
   prints PASS/FAIL. Clean floor spot: `--drop_x 5.0 --drop_y 1.0 --drop_z 0.6`.
 - `step2_go2.py` — Step 2. Go2 stand (+ optional `--walk` trot). kp=30, kv=1.5,
   symmetric standing pose; logs base z and forward x.
+- `render_go2_hero.py` — clean hero render + camera turntable of the standing Go2.
+  Stands the Go2 at a verified-clear open-floor spot (1.0, 1.0), saves a 960x720 3/4-angle
+  hero PNG (robot foreground, sofa/chairs/window behind), then orbits the camera 360 deg
+  for 48 frames and encodes an MP4. GPU EGL rasterizer. `--hero_only` skips the turntable.
 
 ## Outputs (`outputs/`)
 
@@ -59,7 +63,10 @@ $ENVS/genesis/bin/pip install "numpy<2"              # ABI fix for torch 2.2
   at 0.56 m — correct behavior, just a different surface).
 - `step2_go2_stand_trajectory.png` — Go2 base z holds ~0.29 m for 4 s (stable stand).
 - `genesis_room_render.png` — EGL render of the reconstructed room0 loaded as a collider.
-- `go2_in_room_render.png` — Go2 placed in the room.
+- `go2_hero.png` — **hero shot**: Go2 standing as foreground subject on the open floor with
+  the recognizable room (armchair, sofa, coffee table, window) behind it.
+- `go2_room.mp4` — 48-frame camera turntable orbiting the standing Go2 in the room.
+- `go2_in_room_render.png` — earlier wide render (kept for reference).
 
 ## What worked / what's blocked / what it would take to finish
 

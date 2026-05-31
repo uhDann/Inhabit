@@ -190,13 +190,18 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 - `viewer/splat_ref.html` shows the reference Gaussian splat.
 
 <p align="center">
-  <img src="docs/figures/topdown_path.png" width="50%" alt="agent navigation path over the reconstructed room, top-down"/><br/>
-  <em>Habitat backend: the metric mesh as a navmesh, with a recorded agent trajectory (top-down).</em>
+  <img src="docs/figures/go2_room.gif" width="46%" alt="Go2 quadruped standing in the reconstructed room under physics"/><br/>
+  <em>Genesis backend: a Go2 quadruped stands in the phone-scanned room under rigid-body physics at metric scale (camera orbiting the standing robot).</em>
 </p>
 
 <p align="center">
   <img src="docs/figures/genesis_physics.png" width="92%" alt="reconstructed room in Genesis with a sphere settling on the floor"/><br/>
-  <em>Genesis backend: the reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right). A Go2 quadruped also spawns and stands stably on the same floor.</em>
+  <em>The reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right), validating import, scale, collision, and gravity.</em>
+</p>
+
+<p align="center">
+  <img src="docs/figures/topdown_path.png" width="48%" alt="agent navigation path over the reconstructed room, top-down"/><br/>
+  <em>Habitat backend: the metric mesh as a navmesh, with a recorded agent trajectory (top-down).</em>
 </p>
 
 ## Design choices
