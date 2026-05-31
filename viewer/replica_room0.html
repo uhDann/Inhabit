@@ -66,14 +66,20 @@ const load = (url, mat) => new Promise((res, rej) => loader.load(url, g => {
     dn.geometry.computeBoundingBox(); group.add(dn);
     cons = await load('../runs/replica_room0/r0_cons.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.95, side:THREE.DoubleSide}));
     cons.visible=false; group.add(cons);
-    gt = await load('../runs/replica_room0/r0_gt.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.9, side:THREE.DoubleSide}));
-    gt.visible=false; group.add(gt);
+    // GT mesh is large (49 MB) and optional; load it if present, skip gracefully if not.
+    try {
+      gt = await load('../runs/replica_room0/r0_gt.ply', new THREE.MeshStandardMaterial({vertexColors:true, roughness:.9, side:THREE.DoubleSide}));
+      gt.visible=false; group.add(gt);
+    } catch(_) {
+      gt=null; const el=document.getElementById('t_gt');
+      if(el){ el.disabled=true; el.parentElement.style.opacity=0.45; el.parentElement.title='ground-truth mesh not bundled (49 MB)'; }
+    }
 
     // shared centering from DN bbox (all already in the same Replica world frame)
     const bb=dn.geometry.boundingBox, c=bb.getCenter(new THREE.Vector3()), e=bb.getSize(new THREE.Vector3());
     const s=3.0/Math.max(e.x,e.y,e.z);
     const M=new THREE.Matrix4().makeScale(s,s,s).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
-    for (const m of [dn,cons,gt]) { m.geometry.applyMatrix4(M); m.geometry.computeBoundingSphere(); }
+    for (const m of [dn,cons,gt]) { if(m){ m.geometry.applyMatrix4(M); m.geometry.computeBoundingSphere(); } }
     controls.target.set(0,0,0); controls.update();
     setStatus(`loaded · DN ${(dn.geometry.index.count/3)|0} · Consensus ${(cons.geometry.index.count/3)|0} tris`);
   } catch(e){ setStatus('load error: '+(e.message||e)); console.error(e); }
