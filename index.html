@@ -32,8 +32,8 @@
   <h1>vid2scene</h1>
   <p class="tag">Phone video → <b>metric</b> 3D reconstruction → a room a <b>robot can explore</b>.</p>
 
-  <img src="docs/figures/compare.gif" alt="left: original video — right: reconstruction" />
-  <p class="muted">Left: original phone video. Right: our reconstruction, rendered along the same path.</p>
+  <img src="docs/figures/replica_compare.gif" alt="original video left, reconstruction right" />
+  <p class="muted">A benchmarked scene (Replica room0): original video (left) and our reconstruction (right), along the same path. Sub-centimetre accuracy against the ground-truth mesh.</p>
 
   <h2>Interactive viewers (live)</h2>
   <div class="cards">
@@ -63,12 +63,14 @@
   </table>
   <p class="muted">5-scene average. Sub-centimetre accuracy. Full protocol + per-scene table in the repo's <code>docs/BENCHMARK.md</code>.</p>
 
-  <img src="docs/figures/replica_compare.gif" alt="Replica room0: original vs reconstruction" />
-  <p class="muted">A benchmarked scene (Replica room0): original (left) vs our reconstruction (right), along the capture path.</p>
+  <img src="docs/figures/fly_room0.gif" style="max-width:32%" alt="reconstructed living room" />
+  <img src="docs/figures/fly_room1.gif" style="max-width:32%" alt="reconstructed bedroom" />
+  <img src="docs/figures/fly_room2.gif" style="max-width:32%" alt="reconstructed study" />
+  <p class="muted">Interior fly-throughs of three reconstructed benchmark scenes (living room, bedroom, study).</p>
 
   <h2>An agent explores it</h2>
-  <img src="docs/figures/explore_agent.gif" style="max-width:62%" alt="agent walking the reconstructed room" />
-  <p class="muted">A navigation agent walks the metric reconstruction; its camera is rendered photorealistically from the splat. The embodied (Genesis) upgrade is designed in <code>docs/PHASE2_GENESIS.md</code>.</p>
+  <img src="docs/figures/topdown_path.png" style="max-width:48%" alt="agent navigation path over the reconstructed room" />
+  <p class="muted">The metric mesh is loaded as a Habitat navmesh. Top-down view of a recorded agent trajectory over the reconstructed room. The Genesis physics upgrade is described in <code>docs/PHASE2_GENESIS.md</code>.</p>
 
   <h2>Code</h2>
   <p>Repo &amp; full write-up on GitHub — see the <a href="https://github.com/uhDann/Inhabit">repo</a>, <code>docs/ARCHITECTURE.md</code>, and <code>docs/BENCHMARK.md</code>.</p>

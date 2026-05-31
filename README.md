@@ -13,8 +13,8 @@ agent's first-person view is rendered from the scene.
 Built for Humanoid's *From Video to 3D Reconstruction* challenge.
 
 <p align="center">
-  <img src="docs/figures/compare.gif" width="80%" alt="original video on the left, reconstruction on the right"/><br/>
-  <em>Original phone video (left) and the reconstruction rendered along the same camera path (right).</em>
+  <img src="docs/figures/replica_compare.gif" width="80%" alt="original frames on the left, reconstruction on the right"/><br/>
+  <em>A benchmarked scene (Replica room0): the original video (left) and our reconstruction (right), rendered along the same camera path. Accuracy against the ground-truth mesh is sub-centimetre.</em>
 </p>
 
 ## Contributions
@@ -107,9 +107,13 @@ which helps when coverage is incomplete and is roughly neutral when coverage is
 already good. The full per-scene metrics and the backbone ablation are in
 [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
+Interior fly-throughs of the recovered meshes for three benchmark scenes
+(living room, bedroom, study):
+
 <p align="center">
-  <img src="docs/figures/replica_compare.gif" width="78%" alt="Replica room0: original render on the left, reconstruction on the right"/><br/>
-  <em>A benchmarked scene (Replica room0): original (left) and reconstruction (right) along the capture path. Accuracy against the ground-truth mesh is sub-centimetre.</em>
+  <img src="docs/figures/fly_room0.gif" width="32%" alt="reconstructed living room"/>
+  <img src="docs/figures/fly_room1.gif" width="32%" alt="reconstructed bedroom"/>
+  <img src="docs/figures/fly_room2.gif" width="32%" alt="reconstructed study"/>
 </p>
 
 For reference, the Gaussian splat used as the appearance model reaches 32.3 PSNR
@@ -151,8 +155,8 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 - `viewer/splat_ref.html` shows the reference Gaussian splat.
 
 <p align="center">
-  <img src="docs/figures/explore_agent.gif" width="62%" alt="agent navigating the reconstructed room"/><br/>
-  <em>An agent navigates the metric reconstruction; its view is rendered from the Gaussian splat.</em>
+  <img src="docs/figures/topdown_path.png" width="50%" alt="agent navigation path over the reconstructed room, top-down"/><br/>
+  <em>The metric mesh is loaded as a Habitat navmesh. Top-down view of a recorded agent trajectory over the reconstructed room.</em>
 </p>
 
 ## Design choices
