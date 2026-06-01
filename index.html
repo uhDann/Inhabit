@@ -73,10 +73,10 @@
   <img src="docs/figures/fly_room2.gif" style="max-width:42%" alt="reconstructed study" />
   <p class="muted">Interior fly-throughs of two reconstructed benchmark scenes (a bedroom and the cluttered study).</p>
 
-  <h2>A robot stands in it, under physics</h2>
-  <img src="docs/figures/go2_room.gif" style="max-width:46%" alt="Go2 quadruped standing in the reconstructed room" />
+  <h2>A robot moves through it, at metric scale</h2>
+  <img src="docs/figures/go2_walk.gif" style="max-width:58%" alt="Go2 quadruped traversing the reconstructed room, fixed camera" />
   <img src="docs/figures/topdown_path.png" style="max-width:40%" alt="agent navigation path over the reconstructed room" />
-  <p class="muted">Left: a Go2 quadruped stands in the phone-scanned room in Genesis under rigid-body physics at metric scale (a dropped object also rests on the floor within 2&nbsp;cm). Right: the same mesh as a Habitat navmesh with a recorded agent trajectory. See <code>scripts/genesis/</code> and <code>docs/PHASE2_GENESIS.md</code>.</p>
+  <p class="muted">Left: a Go2 quadruped traverses the phone-scanned room in Genesis at metric scale (fixed camera, planned path with a trot gait; a kinematic traversal, since physics-driven locomotion needs a trained policy). Rigid-body physics is validated separately: a dropped object rests on the floor within 2&nbsp;cm. Right: the same mesh as a Habitat navmesh with a recorded agent trajectory. See <code>scripts/genesis/</code> and <code>docs/PHASE2_GENESIS.md</code>.</p>
 
   <h2>Code</h2>
   <p>Repo &amp; full write-up on GitHub — see the <a href="https://github.com/uhDann/Inhabit">repo</a>, <code>docs/ARCHITECTURE.md</code>, and <code>docs/BENCHMARK.md</code>.</p>

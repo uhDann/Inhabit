@@ -222,8 +222,8 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 - `viewer/splat_ref.html` shows the reference Gaussian splat.
 
 <p align="center">
-  <img src="docs/figures/go2_room.gif" width="46%" alt="Go2 quadruped standing in the reconstructed room under physics"/><br/>
-  <em>Genesis backend: a Go2 quadruped stands in the phone-scanned room under rigid-body physics at metric scale (camera orbiting the standing robot).</em>
+  <img src="docs/figures/go2_walk.gif" width="62%" alt="Go2 quadruped traversing the reconstructed room, fixed camera"/><br/>
+  <em>Genesis backend: a Go2 quadruped traverses the phone-scanned room at metric scale (fixed camera). The base follows a planned path over the open floor with a trot gait; this is a kinematic traversal, as physics-driven locomotion needs a trained policy (see Limitations). Rigid-body physics is validated separately below.</em>
 </p>
 
 <p align="center">
