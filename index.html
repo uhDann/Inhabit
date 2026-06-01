@@ -19,6 +19,11 @@
   .card p { margin: 0 0 12px; color: #aab2bd; font-size: 14px; }
   .btn { display: inline-block; background: #1f6feb; color: #fff; padding: 7px 13px; border-radius: 7px; font-size: 14px; }
   .btn:hover { background: #2b7bff; text-decoration: none; }
+  .social { margin: 2px 0 26px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .social a { display: inline-block; border: 1px solid #2b303a; color: #cdd3db; padding: 6px 13px; border-radius: 999px; font-size: 13px; }
+  .social a:hover { background: #1a1e24; border-color: #3a414d; text-decoration: none; }
+  .about { margin-top: 46px; padding-top: 22px; border-top: 1px solid #23262c; color: #aab2bd; font-size: 14px; }
+  .about b { color: #e6e8ec; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 6px; }
   th, td { border: 1px solid #23262c; padding: 6px 10px; text-align: right; }
   th:first-child, td:first-child { text-align: left; }
@@ -31,6 +36,11 @@
 <div class="wrap">
   <h1>Inhabit</h1>
   <p class="tag">Phone video → <b>metric</b> 3D reconstruction → a room a <b>robot can explore</b>.</p>
+  <div class="social">
+    <a href="https://github.com/uhDann/Inhabit">GitHub</a>
+    <a href="https://www.linkedin.com/in/danilakozlov/">LinkedIn</a>
+    <a href="https://www.danilakozlov.com">Website</a>
+  </div>
 
   <img src="docs/figures/teaser.gif" alt="phone capture to metric 3D reconstruction to a robot walking through the room" />
   <p class="muted">The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a Go2 robot exploring the scanned room at metric scale.</p>
@@ -82,6 +92,11 @@
 
   <h2>Code</h2>
   <p>Repo &amp; full write-up on GitHub — see the <a href="https://github.com/uhDann/Inhabit">repo</a>, <code>docs/ARCHITECTURE.md</code>, and <code>docs/BENCHMARK.md</code>.</p>
+
+  <div class="about">
+    <p><b>Danila Kozlov</b> — AI researcher and operator. Previously a Member of Technical Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent research. Earlier: Anthropic, Amazon Web Services, and Cisco. <b>Inhabit</b> sits where that work meets spatial AI and robotics — turning an ordinary phone capture into a metric world an embodied agent can act in.</p>
+    <p><a href="https://www.danilakozlov.com">Website</a> · <a href="https://www.linkedin.com/in/danilakozlov/">LinkedIn</a> · <a href="https://github.com/uhDann">GitHub</a></p>
+  </div>
 </div>
 </body>
 </html>

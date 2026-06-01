@@ -313,3 +313,15 @@ Datasets:
 - Ren et al. *MuSHRoom: Multi-Sensor Hybrid Room Dataset.* WACV 2024.
 - Barron et al. *Mip-NeRF 360.* CVPR 2022.
 
+## Author
+
+**Danila Kozlov** — AI researcher and operator. Previously a Member of Technical
+Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent
+research. Earlier: Anthropic, Amazon Web Services, and Cisco. Inhabit sits where
+that work meets spatial AI and robotics: turning an ordinary phone capture into a
+metric world an embodied agent can act in.
+
+[Website](https://www.danilakozlov.com) ·
+[LinkedIn](https://www.linkedin.com/in/danilakozlov/) ·
+[GitHub](https://github.com/uhDann)
+
