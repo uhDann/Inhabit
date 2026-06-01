@@ -317,9 +317,7 @@ Datasets:
 
 **Danila Kozlov** — AI researcher and operator. Previously a Member of Technical
 Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent
-research. Earlier: Anthropic, Amazon Web Services, and Cisco. Inhabit sits where
-that work meets spatial AI and robotics: turning an ordinary phone capture into a
-metric world an embodied agent can act in.
+research. Earlier: Anthropic, Amazon Web Services, and Cisco.
 
 [Website](https://www.danilakozlov.com) ·
 [LinkedIn](https://www.linkedin.com/in/danilakozlov/) ·
