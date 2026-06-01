@@ -1,6 +1,6 @@
 # Inhabit
 
-**Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) — interactive 3D viewers and the visual results.
+**Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) (interactive 3D viewers and the visual results).
 
 From a phone video of a room to a metric 3D reconstruction, evaluated against
 ground truth and usable as an embodied environment.
@@ -345,7 +345,7 @@ Datasets:
 
 ## Author
 
-**Danila Kozlov** — AI researcher and operator. Previously a Member of Technical
+**Danila Kozlov**, AI researcher and operator. Previously a Member of Technical
 Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent
 research. Earlier: Anthropic, Amazon Web Services, and Cisco.
 
