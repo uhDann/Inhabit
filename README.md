@@ -239,6 +239,36 @@ Live at [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com), or
   <em>The reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right), validating import, scale, collision, and gravity.</em>
 </p>
 
+## Why this matters
+
+Reconstruction is only the front half of the loop. The back half is what the
+metric mesh is for: a physically simulatable environment. Because the output is
+metric and clean enough to load as a rigid-body collider, every capture becomes a
+place an agent can be trained and tested in. Paired with a physics engine such as
+[Genesis](https://github.com/Genesis-Embodied-AI/genesis-world), a phone becomes an
+environment generator.
+
+- **Training data at scale.** Each scan is a simulation-ready environment at real
+  scale. Domain-randomise lighting, textures, and object placement; render
+  egocentric views along sampled trajectories; log contacts, depth, and
+  segmentation. One short recording yields a large stream of labelled embodied data
+  with no capture rig and no manual scene authoring.
+- **Evaluation in diverse, real environments.** Policies tend to overfit to a
+  handful of hand-built sim scenes. Here a new test environment is just a phone
+  recording: kitchens, stairwells, cluttered offices, the long tail of real rooms.
+  Coverage that would take an artist days per scene costs a one-minute walk-through,
+  which makes broad, fair evaluation cheap.
+- **Real-to-sim from data you already have.** Egocentric and teleoperation footage
+  captured in the field can be reconstructed into simulatable rooms and replayed as
+  RL environments. That closes the loop: deploy, capture, reconstruct, and re-test
+  the next policy against the exact out-of-distribution situations the fleet met in
+  the real world, rather than against scenes an artist guessed at.
+
+The benchmarking here is the same discipline applied one level down: before trusting
+a reconstruction as an environment, measure it against ground truth. The numbers
+above are what let a generated world be used for training or evaluation with known
+error bounds rather than on faith.
+
 ## Design choices
 
 - **Three methods, because one cannot self-validate.** Comparing distinct
