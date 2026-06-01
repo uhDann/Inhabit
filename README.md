@@ -1,105 +1,111 @@
 # Inhabit
 
-**Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) (interactive 3D viewers and the visual results).
+Turn a phone video of a room into a 3D model that is correct to real-world scale, checked against ground truth, and ready to use as a robot environment in a physics simulator.
 
-From a phone video of a room to a metric 3D reconstruction, evaluated against
-ground truth and usable as an embodied environment.
-
-A short handheld video of a small indoor room is reconstructed into a metric,
-geometrically coherent 3D scene. The project runs three independent
-surface-reconstruction methods on the same capture, fuses them with a gated
-consensus rule, and evaluates every result against ground-truth meshes. The
-resulting metric mesh is then loaded as a navigable environment in which an
-agent's first-person view is rendered from the scene.
+**Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) (interactive 3D viewers and all the results).
 
 Built for Humanoid's *From Video to 3D Reconstruction* challenge.
 
 <p align="center">
   <img src="docs/figures/teaser.gif" width="85%" alt="phone capture to metric 3D reconstruction to a robot walking through the room"/><br/>
-  <em>The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a robot exploring the reconstructed room at metric scale.</em>
+  <em>The whole thing in one shot: phone capture, then a metric 3D reconstruction, then a robot walking around the reconstructed room at real scale.</em>
 </p>
 
 <p align="center">
   <img src="docs/figures/replica_compare.gif" width="80%" alt="original frames on the left, reconstruction on the right"/><br/>
-  <em>Fidelity check on a benchmarked scene (Replica room0): the original video (left) and our reconstruction (right), rendered along the same camera path. Accuracy against the ground-truth mesh is sub-centimetre.</em>
+  <em>Original video (left) and the reconstruction (right) for one benchmarked scene, rendered along the same camera path. The accuracy against the ground-truth mesh is sub-centimetre.</em>
 </p>
 
-## Contributions
+## What it does
 
-The reconstruction backbones are existing state-of-the-art methods. The work
-here is the methodology around them.
+You record a short handheld video of a room. The pipeline then:
 
-**1. Multi-method comparison.** Most video-to-3D systems use a single
-reconstructor. We run three methodologically distinct methods on the same
-capture: [PGSR](https://arxiv.org/abs/2406.06521) (planar Gaussian splatting to a
-TSDF mesh), [DN-Splatter](https://arxiv.org/abs/2403.17822) (Gaussian splatting
-with monocular depth and normal priors to a TSDF mesh), and
-[MonoSDF](https://arxiv.org/abs/2206.00665) (a neural signed-distance field to a
-marching-cubes mesh). Comparing them shows where each one fails. Planar
-regularization smooths over clutter, the SDF over-inflates, and the
-splat-derived TSDF leaves holes.
+1. picks the sharp, well-spaced frames,
+2. reconstructs the room three different ways,
+3. merges the three results so they fill each other's gaps,
+4. scores every result against a ground-truth mesh, in centimetres, and
+5. loads the final model into a physics simulator, where a robot can stand on it, drop objects on it, and walk around.
 
-**2. Gated consensus fusion.** We fuse the meshes by taking one as a backbone and
-adding geometry from another only where the backbone has holes, then fitting a
-single [screened-Poisson](https://www.cs.jhu.edu/~misha/MyPapers/ToG13.pdf)
-surface to the combined points. We avoid volumetric averaging on purpose.
-Averaging surfaces with different systematic biases superimposes their errors and
-produces doubled or thickened walls. We do not claim a new fusion algorithm. We
-claim a simple gating rule and a measured account of when it helps.
+The reconstruction methods themselves are existing research. The work here is what goes around them: a simple rule to merge them, a proper ground-truth benchmark (most phone-to-3D demos only report how good the result looks), real-world scale kept throughout, and the hand-off into a simulator.
 
-**3. Evaluation against ground truth.** We score every mesh and the fusion against
-Replica ground-truth meshes using the standard surface-reconstruction protocol
-([GO-Surf](https://arxiv.org/abs/2206.14735),
-[MonoSDF](https://arxiv.org/abs/2206.00665),
-[Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/)):
-visibility-culled Accuracy, Completion, Chamfer-L1, F-score at 5 cm, and
-Normal-Consistency. The protocol is standard in the reconstruction literature.
-Applying it to a casual phone-capture pipeline, where rendering quality is
-usually the only number reported, is uncommon.
+## Pipeline
 
-**4. Metric scale.** Monocular reconstruction recovers shape only up to an unknown
-global scale factor. We keep the reconstruction in real-world units, because the
-questions that matter for a robot, such as clearance, collision margins, and
-reachability, are only well-posed at true scale. A scale-free mesh can render
-correctly and still give wrong answers to all of them.
-
-**5. Embodied use.** The metric mesh is used as a robot environment two ways. In
-Habitat it becomes a navmesh that an agent walks. In Genesis it becomes a rigid-
-body physics collider: a dropped sphere falls under gravity and comes to rest on
-the reconstructed floor at metric scale (within 2 cm of floor + radius), and a
-Go2 quadruped spawns and holds a stable stance on the same floor under PD
-control. This shows the reconstruction supports real physics at true scale, not
-only rendering. It builds on the real-to-sim-via-splatting line of work
-([EmbodiedSplat](https://arxiv.org/abs/2509.17430),
-[VR-Robo](https://arxiv.org/abs/2502.01536),
-[GaussGym](https://arxiv.org/abs/2510.15352)) as a systems integration, not a new
-simulator. What remains is a trained locomotion policy for forward walking and
-the photoreal Genesis camera; see [docs/PHASE2_GENESIS.md](docs/PHASE2_GENESIS.md)
-and [scripts/genesis/](scripts/genesis).
-
-### The fusion, precisely
-
-Given a trusted backbone mesh `B`, a donor mesh `D`, and a distance threshold `tau`:
+<p align="center">
+  <img src="docs/figures/pipeline.png" width="92%" alt="system pipeline: video to ingest to three reconstructors to consensus fusion to benchmark and embodiment"/>
+</p>
 
 ```
-keep = { d in vertices(D) : dist(d, nearest vertex of B) > tau }   # donor fills only B's holes
-S    = oriented, coloured points of B  ∪  keep
-M    = ScreenedPoisson(S), then trim the lowest-density vertices and keep the
-       largest connected component
+phone video
+  -> ingest        pick sharp, well-spaced frames                 [laptop]
+  -> reconstruct   PGSR, DN-Splatter, MonoSDF                     [GPU]
+  -> fuse          merge them, filling holes                       [laptop]
+  -> benchmark     score against the ground-truth mesh, in cm      [GPU + laptop]
+  -> embodied      load as a robot world in Habitat / Genesis      [laptop + sim]
 ```
 
-`tau` controls how aggressively the donor fills (smaller `tau` borrows more).
-The gate is what prevents the doubled-surface artifact: where `B` already has a
-surface, the donor is ignored, so two biased surfaces are never averaged.
-Implementation: [`src/vid2scene/fuse/consensus.py`](src/vid2scene/fuse/consensus.py).
+The three reconstruction methods, all run on the same frames:
+
+- **PGSR**: planar Gaussian splatting, converted to a mesh.
+- **DN-Splatter**: Gaussian splatting guided by depth and surface-normal hints, converted to a mesh.
+- **MonoSDF**: a neural distance field, converted to a mesh.
+
+They fail in different ways. PGSR smooths over clutter, MonoSDF puffs the shape outward, and the splat-based meshes leave holes. Running all three on the same video shows where each one breaks, instead of trusting a single method's nice-looking output.
+
+### Two places it runs
+
+The laptop stages are a normal Python package (`pip install -e .`): ingest, fuse, benchmark, the viewers, and the simulator export. They run on a laptop with no GPU.
+
+The three reconstruction methods are separate research codebases, each with its own CUDA setup and a few hours of GPU training. Those run on a GPU machine, driven by the scripts in `scripts/remote/`. I kept them separate rather than pretend that one `pip install` reproduces six GPU-hours of training.
+
+### Run it
+
+```bash
+make install     # laptop stages
+make benchmark   # rebuild the ground-truth table from the bundled metrics
+make viewer      # serve the 3D viewers at http://localhost:8765
+
+# merge any two coloured meshes
+vid2scene fuse --backbone pgsr.ply --donor dn.ply --out consensus.ply
+# export the metric mesh as a simulator-ready collider
+vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.json
+```
+
+## Merging the three meshes
+
+The merge keeps one mesh as the trusted base and only borrows from another where the base has holes. It never averages two surfaces together. Averaging two meshes that are each wrong in a different way just stacks their errors and produces doubled or thickened walls.
+
+Given a base mesh `B`, a donor mesh `D`, and a distance threshold `tau`:
+
+```
+keep = { points of D that are more than tau away from the nearest point of B }
+S    = all points of B  +  keep          # the donor only fills B's holes
+mesh = ScreenedPoisson(S), then drop the lowest-density vertices
+       and keep the largest connected piece
+```
+
+A smaller `tau` borrows more from the donor. The threshold is the whole trick: where `B` already has a surface, the donor is ignored, so two biased surfaces are never blended. Code: [`src/vid2scene/fuse/consensus.py`](src/vid2scene/fuse/consensus.py).
 
 ## Results
 
-Table 1 reports reconstruction accuracy against Replica ground-truth meshes,
-averaged over five scenes (room0-2, office0-1). All meshes are visibility-culled
-before scoring. Distances are in centimetres; F-score uses a 5 cm threshold.
-Reproduce with `make benchmark`, which reads the bundled metrics in
-`runs/replica_eval/`.
+### How the scoring works
+
+Every reconstruction is scored against a ground-truth mesh, so the numbers are real distances, not rendering quality.
+
+| Metric | What it measures | Better |
+|---|---|---|
+| Accuracy | how far the reconstruction sits from the true surface | lower |
+| Completion | how much of the true surface got reconstructed | lower |
+| Chamfer-L1 | the average of Accuracy and Completion | lower |
+| F-score @ 5 cm | fraction of surface within 5 cm, balancing the two | higher |
+| Normal consistency | how well the surface orientations match | higher |
+
+One step matters more than any other: **visibility culling**. You cannot fairly compare against the full ground-truth mesh, because every method invents geometry behind walls and outside the frame, and the ground truth contains surfaces the camera never saw. So before scoring, both the ground-truth mesh and every reconstruction are cut down to only the region the cameras actually observed, using the same camera poses. I use DN-Splatter's `eval_mesh_vis_cull.py` for every method, so the culling (poses, depths, thresholds) is identical across all of them.
+
+A rough sanity check: a correct Replica room0 result lands around 1.5 to 5 cm Chamfer and 0.7 to 0.93 F-score. Numbers far outside that band mean an alignment or culling bug, not a real method difference.
+
+### Replica (synthetic, with ground-truth meshes)
+
+Replica ships a ground-truth mesh per room, which is why it is the benchmark here. Distances are in centimetres, averaged over five scenes (room0-2, office0-1). Rebuild with `make benchmark`, which reads the bundled metrics in `runs/replica_eval/`.
 
 **Table 1. Five-scene average.**
 
@@ -107,13 +113,7 @@ Reproduce with `make benchmark`, which reads the bundled metrics in
 |---|---|---|---|---|---|
 | PGSR | 1.13 | 7.60 | 4.37 | 0.938 | 0.898 |
 | DN-Splatter | 0.57 | 6.14 | 3.36 | 0.965 | 0.936 |
-| Consensus (fusion) | 1.07 | 6.47 | 3.77 | 0.944 | 0.913 |
-
-DN-Splatter is the most accurate single method, with sub-centimetre accuracy on
-every scene. The consensus fusion does not beat the best single method on these
-scenes, most of which have near-complete camera coverage. What the fusion does is
-improve the mesh it is built on, and the improvement grows with scene difficulty.
-Table 2 gives the Chamfer-L1 per scene.
+| Consensus (merge) | 1.07 | 6.47 | 3.77 | 0.944 | 0.913 |
 
 **Table 2. Chamfer-L1 per scene (cm).**
 
@@ -126,52 +126,50 @@ Table 2 gives the Chamfer-L1 per scene.
 | office1 | 7.11 | 6.81 | 6.97 |
 | average | 4.37 | 3.36 | 3.77 |
 
-On the cluttered `room2` the fusion lowers the PGSR backbone's Chamfer-L1 from
-4.29 to 2.34 cm. On `office1`, where camera coverage is poorest, a variant that
-uses DN-Splatter as the backbone reaches 6.48 cm against DN-Splatter's own
-6.81 cm. The fusion trades a small amount of accuracy for better completion,
-which helps when coverage is incomplete and is roughly neutral when coverage is
-already good. The full per-scene metrics and the backbone ablation are in
-[docs/BENCHMARK.md](docs/BENCHMARK.md).
+DN-Splatter is the most accurate single method, sub-centimetre on every scene. (Its own paper reports about 0.74 cm average over these scenes, so this is in line with the published numbers.) The merge does not beat it here, because most of these scenes have near-complete camera coverage and leave no holes to fill.
+
+What the merge does do is improve the mesh it is built on, more so when the scene is harder. On the cluttered room2 it cuts the PGSR base's Chamfer-L1 from 4.29 to 2.34 cm. On the offices, where coverage is poorest, it also beats PGSR. The merge trades a little accuracy for better completeness: it helps when coverage is incomplete and is roughly a wash when coverage is already good.
 
 <p align="center">
-  <img src="docs/figures/benchmark_bars.png" width="88%" alt="grouped bar chart of Chamfer-L1 and F-score for PGSR, DN-Splatter and the consensus fusion on Replica and on a real iPhone capture"/><br/>
-  <em>Tables 1 and 3 at a glance: Chamfer-L1 (lower is better) and F-score@5cm (higher is better) for the three methods, on the Replica average and on the real iPhone capture.</em>
+  <img src="docs/figures/benchmark_bars.png" width="88%" alt="grouped bar chart of Chamfer-L1 and F-score for the three methods on Replica and on a real iPhone capture"/><br/>
+  <em>Tables 1 and 4 at a glance: Chamfer-L1 (lower is better) and F-score at 5 cm (higher is better), on the Replica average and on the real iPhone capture.</em>
 </p>
-
-The standard surface-reconstruction error visualization makes the per-method
-differences legible. Each mesh vertex is coloured by its distance to the
-ground-truth mesh on the cluttered `room2`, clamped at 5 cm:
 
 <p align="center">
-  <img src="docs/figures/error_heatmap.png" width="100%" alt="per-vertex distance-to-ground-truth error, colormapped, for PGSR, DN-Splatter and the consensus fusion on room2"/><br/>
-  <em>Per-vertex error against the GT mesh (turbo colormap, 0-5 cm). Blue is accurate; warmer is further from ground truth. DN-Splatter is cleanest overall; the fusion concentrates its remaining error in the cluttered, low-coverage regions.</em>
+  <img src="docs/figures/error_heatmap.png" width="100%" alt="per-vertex distance-to-ground-truth error for the three methods on room2"/><br/>
+  <em>Each vertex of the room2 reconstruction coloured by its distance to the ground truth (0 to 5 cm). Blue is accurate, red is far off. DN-Splatter is cleanest; the merge's remaining error sits in the cluttered, low-coverage spots.</em>
 </p>
 
-All five benchmark scenes, input video against reconstruction, played along the
-same camera path. Each pair is the original capture (left) and our reconstruction
-(right). Top row: `room0`, `room1`, `room2`; bottom row: `office0`, `office1`.
+All five benchmark scenes, input video (left) against reconstruction (right), played along the same camera path. Top row: room0, room1, room2. Bottom row: office0, office1.
 
 <p align="center">
-  <img src="docs/figures/benchmark_grid.gif" width="100%" alt="grid of all five Replica benchmark scenes, each showing the input video next to the reconstruction along the same trajectory"/>
+  <img src="docs/figures/benchmark_grid.gif" width="100%" alt="grid of all five Replica benchmark scenes, input video next to reconstruction"/>
 </p>
 
-The reconstructions track the input closely on the rooms; the offices are dimmer
-scenes with poorer camera coverage, which is where the larger Chamfer-L1 in
-Table 2 comes from.
+The reconstructions track the input closely on the rooms. The offices are dimmer and less fully covered, which is where the bigger errors in Table 2 come from.
 
-For reference, the Gaussian splat used as the appearance model reaches 32.3 PSNR
-on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result on
-that scene. This is a check that the front end is competitive, not a headline
-result.
+### Flipping the base mesh
 
-### On a real iPhone capture
+The merge above uses PGSR as the base and DN-Splatter as the gap-filler. Since DN-Splatter is the stronger method, the obvious thing to try is the reverse: DN-Splatter as the base, PGSR as the gap-filler. No retraining needed, just re-merge and re-score the meshes that already exist.
 
-The scenes above are rendered. We also ran the full pipeline on a genuine
-handheld iPhone capture with a Faro laser-scan ground-truth mesh (MuSHRoom
-`coffee_room`), scored with the same protocol.
+**Table 3. Chamfer-L1 (cm): DN-Splatter alone vs the DN-base merge.**
 
-**Table 3. Real iPhone capture (MuSHRoom `coffee_room`).**
+| Scene | DN-Splatter alone | DN-base merge |
+|---|---|---|
+| room0 | 0.62 | 1.91 |
+| room1 | 0.88 | 1.01 |
+| room2 | 1.97 | 2.05 |
+| office0 | 6.50 | 6.71 |
+| office1 | 6.81 | 6.48 |
+| average | 3.36 | 3.63 |
+
+It still does not beat DN-Splatter on these clean scenes: the extra Poisson step costs a little accuracy (0.57 to 0.79 cm on average), and there are too few holes to make up for it. But on the gappiest scene, office1, it wins outright (6.48 vs 6.81). Same conclusion as before: the merge helps exactly when coverage is poor.
+
+### A real iPhone capture
+
+The scenes above are rendered. I also ran the whole pipeline on a real handheld iPhone video with a Faro laser-scan ground-truth mesh (MuSHRoom `coffee_room`), using the same scoring.
+
+**Table 4. Real iPhone capture (MuSHRoom `coffee_room`).**
 
 | Method | Chamfer-L1 ↓ (cm) | F-score ↑ |
 |---|---|---|
@@ -179,148 +177,105 @@ handheld iPhone capture with a Faro laser-scan ground-truth mesh (MuSHRoom
 | **DN-Splatter** | **1.91** | **0.946** |
 | Consensus | 4.69 | 0.796 |
 
-The findings transfer to real data: DN-Splatter reconstructs the room to about
-2 cm against the laser ground truth, and the fusion again improves its PGSR
-backbone (4.98 → 4.69 cm) without beating the best single method. Errors are
-higher than on the rendered scenes, as expected for real capture. Full numbers in
-[docs/BENCHMARK.md](docs/BENCHMARK.md).
+The result holds up on real data. DN-Splatter reconstructs the room to about 2 cm against the laser ground truth, and the merge again improves its PGSR base (4.98 to 4.69 cm) without beating DN-Splatter. Errors are higher than on the rendered scenes, which is expected for a real capture (sensor noise, pose error, motion blur).
 
 <p align="center">
   <img src="docs/figures/mushroom_fly.gif" width="42%" alt="reconstruction of a real iPhone capture (MuSHRoom coffee_room)"/><br/>
-  <em>Reconstruction of the real iPhone <code>coffee_room</code> capture. Rougher than the rendered scenes, and validated at roughly 2 cm against the Faro ground-truth mesh.</em>
+  <em>The real iPhone <code>coffee_room</code> reconstruction. Rougher than the rendered scenes, and accurate to about 2 cm against the laser ground truth.</em>
 </p>
 
-## How it works
+For reference, the Gaussian splat used for appearance reaches 32.3 PSNR on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result there. That is just a check that the front end is competitive. It is a training-time number on a scene with no ground-truth mesh, so I do not treat it as a headline result.
+
+## A robot in the room
+
+The metric mesh is used as a robot environment two ways.
+
+In **Habitat**, it becomes a navmesh that an agent walks.
+
+In **Genesis** (a physics simulator), it becomes a rigid-body collider. Two things are implemented and checked:
+
+- **Object drop.** The reconstructed room0 mesh is gravity-aligned (floor at z = 0) and loaded as a static collider. A sphere (radius 0.12 m) dropped from 0.6 m falls under gravity and comes to rest at z ≈ 0.098 m, which is floor-plus-radius within about 2 cm, with no tunnelling through the floor. This checks mesh import, scale, collision, and gravity together.
+- **Go2 quadruped.** The Genesis Go2 robot (18 joints) spawns at 0.42 m and settles to a stable stance at z ≈ 0.29 m, held for four seconds under PD control.
 
 <p align="center">
-  <img src="docs/figures/pipeline.png" width="92%" alt="system pipeline: video to ingest to three reconstructors to consensus fusion to benchmark and embodiment"/>
+  <img src="docs/figures/genesis_physics.png" width="92%" alt="reconstructed room in Genesis with a sphere settling on the floor"/><br/>
+  <em>The reconstructed room as a rigid-body collider. The dropped sphere falls and rests on the floor at real scale (right), which is what confirms import, scale, collision, and gravity are all correct.</em>
 </p>
 
-```
-phone video
-  -> ingest        keyframe selection (blur gate + parallax spacing)      [CPU]
-  -> reconstruct   PGSR, DN-Splatter, MonoSDF                             [GPU]
-  -> fuse          gated consensus (backbone + donor-in-holes)            [CPU]
-  -> benchmark     visibility-culled Chamfer / F-score vs GT mesh         [GPU+CPU]
-  -> embodied      metric mesh -> Habitat navmesh -> splat-rendered agent [CPU + sim]
-```
+<p align="center">
+  <img src="docs/figures/go2_walk.gif" width="62%" alt="Go2 quadruped walking the reconstructed room from a fixed overhead-corner camera"/><br/>
+  <em>A Go2 walks a path across the reconstructed room0 floor in Genesis, fixed camera. The walk is kinematic: the base follows a clear, collision-free path with a trot gait, because physics-driven walking needs a trained policy. The physics itself (gravity, collision) is the sphere-drop check above.</em>
+</p>
 
-The CPU stages install with `pip install -e .` and run on a laptop. The three
-reconstructors run on a CUDA host, driven by [`scripts/remote/`](scripts/remote).
-The full repo map and per-stage code locations are in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+What is not done yet: a trained locomotion policy so the Go2 actually walks forward under physics (that policy lives in the Genesis GitHub repo, not the pip package), and the photoreal Genesis camera that would render the robot's own view straight from the Gaussian splat (it needs CUDA 12.9, and the GPU box is on 12.6). Reproduction note: pin `numpy<2`, since Genesis pulls in numpy 2.x, which breaks the torch 2.2 build.
+
+The simulator export and the physics demos are in `scripts/genesis/`, with the rendered evidence in `scripts/genesis/outputs/`.
+
+## Why this matters
+
+A reconstruction that is metric and clean enough to load as a collider is more than a model: it is a place a robot can be trained and tested in. With a physics engine like [Genesis](https://github.com/Genesis-Embodied-AI/genesis-world), a phone turns into an environment generator.
+
+- **Training data.** Each scan is a simulation-ready room at real scale. Randomise the lighting, textures, and object placement; render first-person views along sampled paths; log contacts and depth. One short video becomes a lot of labelled training data, with no capture rig and no hand-built scenes.
+- **Testing in real, varied places.** Robot policies usually get tested in a handful of hand-made sim rooms. Here a new test room is just a phone video: kitchens, stairwells, cluttered offices, the long tail of real spaces. Coverage that would take an artist days per scene costs a one-minute walk-through.
+- **Reusing data you already have.** First-person and teleoperation footage recorded in the field can be turned back into simulator rooms and replayed as training environments. That closes the loop: deploy, record, reconstruct, and re-test the next policy in the exact situations the robot actually ran into, instead of scenes an artist guessed at.
+
+The benchmark is the same idea one level down: before trusting a reconstruction as an environment, measure it. The centimetre numbers above are what let a generated room be used with known error bounds instead of on faith.
+
+## Limitations
+
+- **Coverage.** The camera cannot reconstruct what it never saw. The pipeline either fills those gaps by interpolation or leaves them open, and which one is stated per result. This is a property of single-pass capture, not of any one method. The per-vertex error map above shows it: the error concentrates where the camera looked least.
+- **The merge is conditional.** It improves its base mesh and helps most on cluttered or low-coverage scenes, but it does not beat the best single method on clean, fully-observed scenes. It trades a little accuracy for completeness rather than improving both.
+- **Scale needs a cue.** Real-world units come from the capture's poses or depth (ARKit or sensor depth). A purely monocular video with no scale cue is only recovered up to an overall scale factor.
+- **The benchmark is small.** Five rendered Replica scenes and one real iPhone capture. A larger real-data sweep would make the claims stronger.
+- **Geometry only.** No semantic labels in this version.
+- **Embodiment is partial.** Habitat navigation and Genesis physics (object drop, robot stand) work. Forward walking needs a trained policy, and the photoreal in-sim camera needs CUDA 12.9.
+
+## Reproduce the benchmark
 
 ```bash
-make install            # CPU stages
-make benchmark          # reproduce the ground-truth table from bundled metrics
-make viewer             # serve the interactive viewers at http://localhost:8765
-
-# fuse any two coloured meshes (CPU)
-vid2scene fuse --backbone pgsr.ply --donor dn.ply --out consensus.ply
-# export the metric mesh as a sim-ready collider
-vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.json
+# 1. data (no login): Nice-SLAM Replica, ships ground-truth meshes
+wget -c https://cvg-data.inf.ethz.ch/nice-slam/data/Replica.zip && unzip Replica.zip
+# 2. convert a scene to each method's input
+#    (COLMAP for PGSR, transforms.json for DN-Splatter, cameras.npz for MonoSDF)
+# 3. train each method on a GPU box (MonoSDF is the long one, ~6-12 h)
+# 4. merge:  python scripts/remote/fuse_consensus.py --pgsr P.ply --dn DN.ply --out consensus.ply
+# 5. score every mesh with the SAME culling harness:
+#    python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path roomN_mesh.ply \
+#      --pred-mesh-path MESH.ply --transformation_file transforms.json \
+#      --dataset_path roomN --dataset_type replica
 ```
+
+## Repository layout
+
+```
+src/vid2scene/      laptop stages and the CLI (ingest, fuse, benchmark, viz, embodied)
+scripts/remote/     GPU reconstruction + benchmark backend (PGSR / DN-Splatter / MonoSDF / fuse / eval)
+scripts/genesis/    Genesis physics (object drop, Go2 stand and walk) + rendered outputs
+scripts/            TSDF meshing, Habitat navmesh and path recording, rendering
+viewer/             three.js and Gaussian-splat web viewers
+runs/               outputs and the bundled ground-truth metrics (replica_eval/)
+docs/               extended engineering notes and the deploy guide
+```
+
+| Part | What it does |
+|---|---|
+| `src/vid2scene/ingest/` | pick frames (blur gate + spacing) and write an HTML report |
+| `src/vid2scene/fuse/` | the consensus merge (`consensus.py`) |
+| `src/vid2scene/benchmark/` | collate the ground-truth metrics into a table |
+| `src/vid2scene/viz/` | mesh decimation for the web viewers |
+| `src/vid2scene/embodied/` | export a simulator-ready GLB for Genesis or Habitat |
+| `scripts/remote/` | per-method setup and launch scripts, the fuse and eval drivers, and `tb.sh` (the GPU-box SSH helper) |
+| `scripts/genesis/` | the Genesis physics demos and their rendered evidence |
+| `viewer/` | the interactive web viewers |
+| `runs/replica_eval/` | bundled metric JSONs so `make benchmark` rebuilds the table offline |
 
 ### Interactive viewers
 
 Live at [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com), or run `make viewer` locally:
 
-- `viewer/replica_room0.html` toggles the reconstruction against the Replica ground-truth mesh.
-- `viewer/mesh_compare.html` shows the three methods and the fusion aligned in one frame.
-- `viewer/splat_ref.html` shows the reference Gaussian splat.
-
-<p align="center">
-  <img src="docs/figures/go2_walk.gif" width="62%" alt="Go2 quadruped traversing the reconstructed room, fixed camera"/><br/>
-  <em>Genesis backend: a Go2 quadruped traverses the phone-scanned room at metric scale (fixed camera). The base follows a planned path over the open floor with a trot gait; this is a kinematic traversal, as physics-driven locomotion needs a trained policy (see Limitations). Rigid-body physics is validated separately below.</em>
-</p>
-
-<p align="center">
-  <img src="docs/figures/genesis_physics.png" width="92%" alt="reconstructed room in Genesis with a sphere settling on the floor"/><br/>
-  <em>The reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right), validating import, scale, collision, and gravity.</em>
-</p>
-
-## Why this matters
-
-Reconstruction is only the front half of the loop. The back half is what the
-metric mesh is for: a physically simulatable environment. Because the output is
-metric and clean enough to load as a rigid-body collider, every capture becomes a
-place an agent can be trained and tested in. Paired with a physics engine such as
-[Genesis](https://github.com/Genesis-Embodied-AI/genesis-world), a phone becomes an
-environment generator.
-
-- **Training data at scale.** Each scan is a simulation-ready environment at real
-  scale. Domain-randomise lighting, textures, and object placement; render
-  egocentric views along sampled trajectories; log contacts, depth, and
-  segmentation. One short recording yields a large stream of labelled embodied data
-  with no capture rig and no manual scene authoring.
-- **Evaluation in diverse, real environments.** Policies tend to overfit to a
-  handful of hand-built sim scenes. Here a new test environment is just a phone
-  recording: kitchens, stairwells, cluttered offices, the long tail of real rooms.
-  Coverage that would take an artist days per scene costs a one-minute walk-through,
-  which makes broad, fair evaluation cheap.
-- **Real-to-sim from data you already have.** Egocentric and teleoperation footage
-  captured in the field can be reconstructed into simulatable rooms and replayed as
-  RL environments. That closes the loop: deploy, capture, reconstruct, and re-test
-  the next policy against the exact out-of-distribution situations the fleet met in
-  the real world, rather than against scenes an artist guessed at.
-
-The benchmarking here is the same discipline applied one level down: before trusting
-a reconstruction as an environment, measure it against ground truth. The numbers
-above are what let a generated world be used for training or evaluation with known
-error bounds rather than on faith.
-
-## Design choices
-
-- **Three methods, because one cannot self-validate.** Comparing distinct
-  reconstruction families against ground truth turns a visual impression into a
-  measurement and shows where each one breaks.
-- **Gating rather than averaging.** The fusion borrows geometry only in backbone
-  holes, which avoids the doubled-surface artifact that averaging biased meshes
-  produces. The benefit is conditional, and the condition is reported.
-- **Metric units from the start,** because the embodied stage depends on them.
-- **Explicit about coverage.** Surfaces the camera never observed cannot be
-  recovered faithfully. We either fill them and say so or leave them, and the
-  capture-coverage diagnosis is shown in [docs/figures](docs/figures).
-- **Two environments by design.** A single `pip install` does not reproduce hours
-  of GPU training, so the training drivers live in
-  [`scripts/remote/`](scripts/remote) and are documented rather than hidden.
-
-## Limitations
-
-- **Coverage.** Surfaces the camera never observed cannot be recovered. The
-  pipeline either fills them by interpolation (screened Poisson) or leaves them
-  open, and the choice is stated per result. This is a property of single-pass
-  capture, not of any one method. The per-vertex error map above shows where this
-  bites: residual error concentrates in the regions the camera saw least.
-- **The fusion is conditional.** The gated consensus improves its backbone and
-  helps most on cluttered or low-coverage scenes, but it does not beat the
-  strongest single method on clean, fully-observed scenes. It trades a little
-  accuracy for completeness rather than improving both.
-- **Metric scale depends on the input.** Real-world units come from the
-  capture's poses or depth priors (ARKit or sensor depth). A purely monocular
-  capture with no scale cue is recovered only up to a global scale factor.
-- **Benchmark spans synthetic and real, but is small.** Ground-truth numbers are
-  on five rendered Replica scenes and one real iPhone capture (MuSHRoom, Faro-laser
-  ground truth). Real-capture errors are higher, as expected. A larger real-data
-  sweep would strengthen the claims further.
-- **Geometry only.** Semantic labelling is out of scope in this version.
-- **Embodiment.** Habitat navigation and Genesis rigid-body physics (object drop,
-  Go2 stand) are implemented. Forward locomotion needs a trained Go2 policy, and
-  the photoreal Genesis camera needs CUDA 12.9; both are open
-  (`docs/PHASE2_GENESIS.md`).
-
-## Repository layout
-
-```
-src/vid2scene/   ingest, fuse, benchmark, viz, embodied      (pip-installable CPU stages + CLI)
-scripts/remote/  GPU reconstruction and benchmark backend    (PGSR / DN-Splatter / MonoSDF / fusion / eval)
-scripts/         TSDF meshing, Habitat navmesh + path, photoreal rendering
-viewer/          three.js and Gaussian-splat web viewers
-docs/            ARCHITECTURE, BENCHMARK, PHASE2_GENESIS, FINDINGS
-runs/            outputs and the bundled ground-truth metrics (replica_eval/)
-```
-
-Start at [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- `viewer/replica_room0.html`: the reconstruction toggled against the Replica ground-truth mesh.
+- `viewer/mesh_compare.html`: the three methods and the merge aligned in one frame.
+- `viewer/splat_ref.html`: the reference Gaussian splat.
 
 ## References
 
@@ -332,7 +287,7 @@ Reconstruction and surface methods:
 - Wang et al. *GO-Surf.* 3DV 2022. [arXiv:2206.14735](https://arxiv.org/abs/2206.14735)
 - Li et al. *Neuralangelo.* CVPR 2023.
 
-Embodied / real-to-sim:
+Embodied and real-to-sim:
 - Khanna et al. *EmbodiedSplat.* ICCV 2025. [arXiv:2509.17430](https://arxiv.org/abs/2509.17430)
 - *VR-Robo.* RA-L 2025. [arXiv:2502.01536](https://arxiv.org/abs/2502.01536)
 - *GaussGym.* 2025. [arXiv:2510.15352](https://arxiv.org/abs/2510.15352)
@@ -345,11 +300,8 @@ Datasets:
 
 ## Author
 
-**Danila Kozlov**, AI researcher and operator. Previously a Member of Technical
-Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent
-research. Earlier: Anthropic, Amazon Web Services, and Cisco.
+**Danila Kozlov**, AI researcher and operator. Previously a Member of Technical Staff at an AI neolab, leading benchmarking, infrastructure, and multi-agent research. Earlier: Anthropic, Amazon Web Services, and Cisco.
 
 [Website](https://www.danilakozlov.com) ·
 [LinkedIn](https://www.linkedin.com/in/danilakozlov/) ·
 [GitHub](https://github.com/uhDann)
-
