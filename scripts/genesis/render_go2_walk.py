@@ -9,6 +9,13 @@ scanned environment, not a physics-trained controller (that needs a learned poli
 see docs/PHASE2_GENESIS.md). The point it makes is that the metric mesh is a usable
 embodied environment at real scale.
 
+Because the traversal is kinematic (no collision response), the path must lie in
+free floor or the robot would clip furniture. The default --wp below is a circle
+in the most open part of the room0 floor: its centre and radius come from a
+clearance map (distance transform of the floor footprint with furniture in a
+0.05-0.9 m height band masked out); the chosen radius keeps the robot's footprint
+clear of every obstacle. Re-derive it for a new scene before changing the path.
+
 GPU rasterizer (EGL), light VRAM.
 """
 import argparse
@@ -68,9 +75,14 @@ def main():
     # fixed camera (3/4 elevated view of the open floor)
     ap.add_argument("--cam", type=float, nargs=3, default=[-2.6, -2.6, 1.7])
     ap.add_argument("--look", type=float, nargs=3, default=[0.2, 0.2, 0.30])
-    # path waypoints across the open floor (x, y); tune to the scene
+    # path waypoints across the open floor (x, y); clearance-verified circle by
+    # default (centre 0.58, 1.40; r 0.5) in the most open part of the room0 floor.
     ap.add_argument("--wp", type=float, nargs="+",
-                    default=[1.6, -0.6, 0.6, 0.4, -0.6, 0.2, -1.4, 1.0])
+                    default=[1.080, 1.400, 1.042, 1.591, 0.934, 1.754, 0.771, 1.862,
+                             0.580, 1.900, 0.389, 1.862, 0.226, 1.754, 0.118, 1.591,
+                             0.080, 1.400, 0.118, 1.209, 0.226, 1.046, 0.389, 0.938,
+                             0.580, 0.900, 0.771, 0.938, 0.934, 1.046, 1.042, 1.209,
+                             1.080, 1.400])
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
