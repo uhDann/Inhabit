@@ -148,6 +148,32 @@ To demonstrate the consensus benefit *quantitatively against GT*, induce the con
 
 _(NVS PSNR/SSIM/LPIPS: deferred — the held-out renders weren't separately scored in this run; can be added from each method's test split.)_
 
+### 6.4 Real-capture benchmark (MuSHRoom `coffee_room`, Faro-laser GT)
+
+The Replica numbers are on rendered scenes. To check the pipeline on a genuine
+handheld iPhone capture, we ran the same three methods, the same fusion, and the
+same visibility-culled protocol on **MuSHRoom `coffee_room`** (real iPhone video;
+ARKit/COLMAP poses; a Faro laser-scan ground-truth mesh). Distances in cm.
+
+| Method | Accuracy ↓ | Completion ↓ | Chamfer-L1 ↓ | Normal-C ↑ | F-score ↑ |
+|---|---|---|---|---|---|
+| PGSR | 5.70 | 4.26 | 4.98 | 0.840 | 0.785 |
+| **DN-Splatter** | **1.80** | **2.02** | **1.91** | **0.861** | **0.946** |
+| Consensus | 5.47 | 3.91 | 4.69 | 0.855 | 0.796 |
+
+The findings transfer from synthetic to real:
+
+- **DN-Splatter is again the strongest method**, and on this real capture it
+  reaches Chamfer-L1 1.91 cm with F-score 0.946 — comparable to its mid-difficulty
+  Replica scenes. A handheld phone scan reconstructed to roughly 2 cm against a
+  laser ground truth is a solid real-world result.
+- **The consensus again improves its PGSR backbone** (Chamfer 4.98 → 4.69 cm,
+  Completion 4.26 → 3.91 cm) without beating DN-Splatter — the same
+  completeness-for-accuracy trade we measured on Replica.
+- Absolute errors are higher than the Replica *room* scenes, as expected for real
+  capture (sensor noise, pose error, motion blur, harder materials). The relative
+  ordering of methods is unchanged.
+
 ## 7. Reproduce
 
 ```bash

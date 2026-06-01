@@ -152,6 +152,29 @@ on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result on
 that scene. This is a check that the front end is competitive, not a headline
 result.
 
+### On a real iPhone capture
+
+The scenes above are rendered. We also ran the full pipeline on a genuine
+handheld iPhone capture with a Faro laser-scan ground-truth mesh (MuSHRoom
+`coffee_room`), scored with the same protocol.
+
+| Method | Chamfer-L1 ↓ (cm) | F-score ↑ |
+|---|---|---|
+| PGSR | 4.98 | 0.785 |
+| **DN-Splatter** | **1.91** | **0.946** |
+| Consensus | 4.69 | 0.796 |
+
+The findings transfer to real data: DN-Splatter reconstructs the room to about
+2 cm against the laser ground truth, and the fusion again improves its PGSR
+backbone (4.98 → 4.69 cm) without beating the best single method. Errors are
+higher than on the rendered scenes, as expected for real capture. Full numbers in
+[docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+<p align="center">
+  <img src="docs/figures/mushroom_fly.gif" width="42%" alt="reconstruction of a real iPhone capture (MuSHRoom coffee_room)"/><br/>
+  <em>Reconstruction of the real iPhone <code>coffee_room</code> capture. Rougher than the rendered scenes, and validated at roughly 2 cm against the Faro ground-truth mesh.</em>
+</p>
+
 ## How it works
 
 <p align="center">
@@ -233,9 +256,10 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 - **Metric scale depends on the input.** Real-world units come from the
   capture's poses or depth priors (ARKit or sensor depth). A purely monocular
   capture with no scale cue is recovered only up to a global scale factor.
-- **Benchmark is synthetic.** The ground-truth numbers are on Replica (rendered
-  scenes). A real-capture evaluation on MuSHRoom (Faro-laser ground truth) is
-  reported separately; real numbers are lower, as expected.
+- **Benchmark spans synthetic and real, but is small.** Ground-truth numbers are
+  on five rendered Replica scenes and one real iPhone capture (MuSHRoom, Faro-laser
+  ground truth). Real-capture errors are higher, as expected. A larger real-data
+  sweep would strengthen the claims further.
 - **Geometry only.** Semantic labelling is out of scope in this version.
 - **Embodiment.** Habitat navigation and Genesis rigid-body physics (object drop,
   Go2 stand) are implemented. Forward locomotion needs a trained Go2 policy, and
