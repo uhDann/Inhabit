@@ -235,11 +235,6 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
   <em>The reconstructed room as a rigid-body collider. A dropped sphere falls under gravity and rests on the floor at metric scale (right), validating import, scale, collision, and gravity.</em>
 </p>
 
-<p align="center">
-  <img src="docs/figures/topdown_path.png" width="48%" alt="agent navigation path over the reconstructed room, top-down"/><br/>
-  <em>Habitat backend: the metric mesh as a navmesh, with a recorded agent trajectory (top-down).</em>
-</p>
-
 ## Design choices
 
 - **Three methods, because one cannot self-validate.** Comparing distinct
