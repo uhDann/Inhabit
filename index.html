@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>vid2scene — phone video → metric 3D → a room a robot can explore</title>
+<title>Inhabit — phone video → metric 3D → a room a robot can explore</title>
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; background: #0d0f12; color: #e6e8ec; font-family: system-ui, -apple-system, sans-serif; line-height: 1.55; }
@@ -29,11 +29,11 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>vid2scene</h1>
+  <h1>Inhabit</h1>
   <p class="tag">Phone video → <b>metric</b> 3D reconstruction → a room a <b>robot can explore</b>.</p>
 
-  <img src="docs/figures/teaser.gif" alt="phone capture to metric 3D reconstruction to a robot standing in the room" />
-  <p class="muted">The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a Go2 robot standing in the scanned room under physics.</p>
+  <img src="docs/figures/teaser.gif" alt="phone capture to metric 3D reconstruction to a robot walking through the room" />
+  <p class="muted">The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a Go2 robot exploring the scanned room at metric scale.</p>
 
   <img src="docs/figures/replica_compare.gif" alt="original video left, reconstruction right" />
   <p class="muted">Fidelity check on a benchmarked scene (Replica room0): original video (left) and our reconstruction (right), along the same path. Sub-centimetre accuracy against the ground-truth mesh.</p>
@@ -71,6 +71,10 @@
 
   <img src="docs/figures/benchmark_grid.gif" alt="grid of all five benchmark scenes, input video vs reconstruction" />
   <p class="muted">All five benchmark scenes, input video (left) vs reconstruction (right) along the same path. Top: room0, room1, room2; bottom: office0, office1.</p>
+
+  <h2>And on a real iPhone capture</h2>
+  <img src="docs/figures/mushroom_fly.gif" style="max-width:42%" alt="reconstruction of a real iPhone capture (MuSHRoom coffee_room)" />
+  <p class="muted">A real handheld iPhone scan (MuSHRoom <code>coffee_room</code>), reconstructed and validated at roughly 2&nbsp;cm against a Faro laser ground-truth mesh. Rougher than the rendered scenes, as expected for real capture.</p>
 
   <h2>A robot moves through it, at metric scale</h2>
   <img src="docs/figures/go2_walk.gif" style="max-width:70%" alt="Go2 quadruped traversing the reconstructed room, fixed camera" />

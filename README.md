@@ -1,4 +1,6 @@
-# vid2scene
+# Inhabit
+
+**Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) — interactive 3D viewers and the visual results.
 
 From a phone video of a room to a metric 3D reconstruction, evaluated against
 ground truth and usable as an embodied environment.
@@ -13,8 +15,8 @@ agent's first-person view is rendered from the scene.
 Built for Humanoid's *From Video to 3D Reconstruction* challenge.
 
 <p align="center">
-  <img src="docs/figures/teaser.gif" width="85%" alt="phone capture to metric 3D reconstruction to a robot standing in the room under physics"/><br/>
-  <em>The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a robot standing in the reconstructed room under physics.</em>
+  <img src="docs/figures/teaser.gif" width="85%" alt="phone capture to metric 3D reconstruction to a robot walking through the room"/><br/>
+  <em>The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a robot exploring the reconstructed room at metric scale.</em>
 </p>
 
 <p align="center">
@@ -220,6 +222,8 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 ```
 
 ### Interactive viewers
+
+Live at [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com), or run `make viewer` locally:
 
 - `viewer/replica_room0.html` toggles the reconstruction against the Replica ground-truth mesh.
 - `viewer/mesh_compare.html` shows the three methods and the fusion aligned in one frame.
