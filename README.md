@@ -13,8 +13,13 @@ agent's first-person view is rendered from the scene.
 Built for Humanoid's *From Video to 3D Reconstruction* challenge.
 
 <p align="center">
+  <img src="docs/figures/teaser.gif" width="85%" alt="phone capture to metric 3D reconstruction to a robot standing in the room under physics"/><br/>
+  <em>The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a robot standing in the reconstructed room under physics.</em>
+</p>
+
+<p align="center">
   <img src="docs/figures/replica_compare.gif" width="80%" alt="original frames on the left, reconstruction on the right"/><br/>
-  <em>A benchmarked scene (Replica room0): the original video (left) and our reconstruction (right), rendered along the same camera path. Accuracy against the ground-truth mesh is sub-centimetre.</em>
+  <em>Fidelity check on a benchmarked scene (Replica room0): the original video (left) and our reconstruction (right), rendered along the same camera path. Accuracy against the ground-truth mesh is sub-centimetre.</em>
 </p>
 
 ## Contributions
@@ -127,25 +132,27 @@ which helps when coverage is incomplete and is roughly neutral when coverage is
 already good. The full per-scene metrics and the backbone ablation are in
 [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
-Interior fly-throughs of the recovered meshes for three benchmark scenes
-(living room, bedroom, study):
-
 <p align="center">
-  <img src="docs/figures/fly_room0.gif" width="32%" alt="reconstructed living room"/>
-  <img src="docs/figures/fly_room1.gif" width="32%" alt="reconstructed bedroom"/>
-  <img src="docs/figures/fly_room2.gif" width="32%" alt="reconstructed study"/>
+  <img src="docs/figures/benchmark_bars.png" width="88%" alt="grouped bar chart of Chamfer-L1 and F-score for PGSR, DN-Splatter and the consensus fusion on Replica and on a real iPhone capture"/><br/>
+  <em>Tables 1 and 3 at a glance: Chamfer-L1 (lower is better) and F-score@5cm (higher is better) for the three methods, on the Replica average and on the real iPhone capture.</em>
 </p>
 
-The three methods and the fusion from one viewpoint, beside the ground-truth
-points:
+The standard surface-reconstruction error visualization makes the per-method
+differences legible. Each mesh vertex is coloured by its distance to the
+ground-truth mesh on the cluttered `room2`, clamped at 5 cm:
 
 <p align="center">
-  <img src="docs/figures/qualitative.png" width="100%" alt="PGSR, DN-Splatter, Consensus and ground truth from the same viewpoint"/>
+  <img src="docs/figures/error_heatmap.png" width="100%" alt="per-vertex distance-to-ground-truth error, colormapped, for PGSR, DN-Splatter and the consensus fusion on room2"/><br/>
+  <em>Per-vertex error against the GT mesh (turbo colormap, 0-5 cm). Blue is accurate; warmer is further from ground truth. DN-Splatter is cleanest overall; the fusion concentrates its remaining error in the cluttered, low-coverage regions.</em>
 </p>
 
-On clean, fully-observed scenes the methods are visually close; the differences
-they are measured on (Table 1) are sub-centimetre. The differences are larger on
-cluttered or low-coverage scenes, which is where the fusion helps most.
+Interior fly-throughs of two recovered benchmark meshes (a bedroom and the
+cluttered study `room2`):
+
+<p align="center">
+  <img src="docs/figures/fly_room1.gif" width="42%" alt="reconstructed bedroom"/>
+  <img src="docs/figures/fly_room2.gif" width="42%" alt="reconstructed study"/>
+</p>
 
 For reference, the Gaussian splat used as the appearance model reaches 32.3 PSNR
 on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result on
@@ -157,6 +164,8 @@ result.
 The scenes above are rendered. We also ran the full pipeline on a genuine
 handheld iPhone capture with a Faro laser-scan ground-truth mesh (MuSHRoom
 `coffee_room`), scored with the same protocol.
+
+**Table 3. Real iPhone capture (MuSHRoom `coffee_room`).**
 
 | Method | Chamfer-L1 ↓ (cm) | F-score ↑ |
 |---|---|---|
@@ -249,6 +258,12 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
   pipeline either fills them by interpolation (screened Poisson) or leaves them
   open, and the choice is stated per result. This is a property of single-pass
   capture, not of any one method.
+
+<p align="center">
+  <img src="docs/figures/capture_coverage_topdown.png" width="60%" alt="top-down view of camera coverage over a scene, showing observed and unobserved regions"/><br/>
+  <em>Where coverage comes from: a top-down view of the observed camera footprint. Regions the camera never sees (behind furniture, outside the path) are exactly where residual error and interpolation concentrate.</em>
+</p>
+
 - **The fusion is conditional.** The gated consensus improves its backbone and
   helps most on cluttered or low-coverage scenes, but it does not beat the
   strongest single method on clean, fully-observed scenes. It trades a little

@@ -32,8 +32,11 @@
   <h1>vid2scene</h1>
   <p class="tag">Phone video → <b>metric</b> 3D reconstruction → a room a <b>robot can explore</b>.</p>
 
+  <img src="docs/figures/teaser.gif" alt="phone capture to metric 3D reconstruction to a robot standing in the room" />
+  <p class="muted">The full pipeline in one shot: phone capture &rarr; metric 3D reconstruction &rarr; a Go2 robot standing in the scanned room under physics.</p>
+
   <img src="docs/figures/replica_compare.gif" alt="original video left, reconstruction right" />
-  <p class="muted">A benchmarked scene (Replica room0): original video (left) and our reconstruction (right), along the same path. Sub-centimetre accuracy against the ground-truth mesh.</p>
+  <p class="muted">Fidelity check on a benchmarked scene (Replica room0): original video (left) and our reconstruction (right), along the same path. Sub-centimetre accuracy against the ground-truth mesh.</p>
 
   <h2>Interactive viewers (live)</h2>
   <div class="cards">
@@ -63,10 +66,12 @@
   </table>
   <p class="muted">5-scene average. Sub-centimetre accuracy. Full protocol + per-scene table in the repo's <code>docs/BENCHMARK.md</code>.</p>
 
-  <img src="docs/figures/fly_room0.gif" style="max-width:32%" alt="reconstructed living room" />
-  <img src="docs/figures/fly_room1.gif" style="max-width:32%" alt="reconstructed bedroom" />
-  <img src="docs/figures/fly_room2.gif" style="max-width:32%" alt="reconstructed study" />
-  <p class="muted">Interior fly-throughs of three reconstructed benchmark scenes (living room, bedroom, study).</p>
+  <img src="docs/figures/benchmark_bars.png" alt="Chamfer-L1 and F-score bar chart, synthetic and real" />
+  <p class="muted">Chamfer-L1 (lower is better) and F-score@5cm (higher is better) across the three methods, on the Replica average and on a real iPhone capture.</p>
+
+  <img src="docs/figures/fly_room1.gif" style="max-width:42%" alt="reconstructed bedroom" />
+  <img src="docs/figures/fly_room2.gif" style="max-width:42%" alt="reconstructed study" />
+  <p class="muted">Interior fly-throughs of two reconstructed benchmark scenes (a bedroom and the cluttered study).</p>
 
   <h2>A robot stands in it, under physics</h2>
   <img src="docs/figures/go2_room.gif" style="max-width:46%" alt="Go2 quadruped standing in the reconstructed room" />
