@@ -146,13 +146,17 @@ ground-truth mesh on the cluttered `room2`, clamped at 5 cm:
   <em>Per-vertex error against the GT mesh (turbo colormap, 0-5 cm). Blue is accurate; warmer is further from ground truth. DN-Splatter is cleanest overall; the fusion concentrates its remaining error in the cluttered, low-coverage regions.</em>
 </p>
 
-Interior fly-throughs of two recovered benchmark meshes (a bedroom and the
-cluttered study `room2`):
+All five benchmark scenes, input video against reconstruction, played along the
+same camera path. Each pair is the original capture (left) and our reconstruction
+(right). Top row: `room0`, `room1`, `room2`; bottom row: `office0`, `office1`.
 
 <p align="center">
-  <img src="docs/figures/fly_room1.gif" width="42%" alt="reconstructed bedroom"/>
-  <img src="docs/figures/fly_room2.gif" width="42%" alt="reconstructed study"/>
+  <img src="docs/figures/benchmark_grid.gif" width="100%" alt="grid of all five Replica benchmark scenes, each showing the input video next to the reconstruction along the same trajectory"/>
 </p>
+
+The reconstructions track the input closely on the rooms; the offices are dimmer
+scenes with poorer camera coverage, which is where the larger Chamfer-L1 in
+Table 2 comes from.
 
 For reference, the Gaussian splat used as the appearance model reaches 32.3 PSNR
 on the Mip-NeRF 360 `room` scene, within 0.7 dB of the best published result on
@@ -257,13 +261,8 @@ vid2scene embodied --mesh consensus.ply --out room_sim.glb --scene-json scene.js
 - **Coverage.** Surfaces the camera never observed cannot be recovered. The
   pipeline either fills them by interpolation (screened Poisson) or leaves them
   open, and the choice is stated per result. This is a property of single-pass
-  capture, not of any one method.
-
-<p align="center">
-  <img src="docs/figures/capture_coverage_topdown.png" width="60%" alt="top-down view of camera coverage over a scene, showing observed and unobserved regions"/><br/>
-  <em>Where coverage comes from: a top-down view of the observed camera footprint. Regions the camera never sees (behind furniture, outside the path) are exactly where residual error and interpolation concentrate.</em>
-</p>
-
+  capture, not of any one method. The per-vertex error map above shows where this
+  bites: residual error concentrates in the regions the camera saw least.
 - **The fusion is conditional.** The gated consensus improves its backbone and
   helps most on cluttered or low-coverage scenes, but it does not beat the
   strongest single method on clean, fully-observed scenes. It trades a little
