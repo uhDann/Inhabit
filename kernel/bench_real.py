@@ -96,7 +96,13 @@ def main():
         v, f, dt = run_open3d(gtd, poses, K, W, H, a.voxel, trunc)
         report("Open3D + GT depth", v, f, dt)
         v, f, dt = fuse_kernel(gtd, poses, K, (lo, hi), a.voxel)
-        report("ours kernel + GT depth", v, f, dt)
+        report("ours TSDF kernel + GT depth", v, f, dt)
+        from surfel import backproject, poisson_mesh
+        import time as _t
+        t0 = _t.perf_counter()
+        P, Nrm, _ = backproject(gtd, poses, K, sub=0.35, device="cuda")
+        v, f = poisson_mesh(P.cpu().numpy(), Nrm.cpu().numpy())
+        report("ours surfel + GT depth", v, f, _t.perf_counter() - t0)
     if pred is not None:
         v, f, dt = fuse_kernel(pred, poses, K, (lo, hi), a.voxel)
         report("ours kernel + feed-forward depth", v, f, dt)
