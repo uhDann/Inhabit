@@ -1,6 +1,29 @@
 # inhabit-kernel: from-scratch rebuild — results
 
-## Tier-1 improvements (latest)
+## #12 surfel core — closes the clean-precision gap (headline)
+
+The TSDF quantises the surface to the voxel grid, capping fine precision. A surfel
+(non-grid) surface places points at the true sub-voxel depth. `surfel.py`:
+back-project posed depth to oriented surfels (depth-derived normals) → screened
+Poisson; with optional differentiable multi-view refinement for noise.
+
+| | clean F@2cm | clean Chamfer | 5% F@2cm | 5% Chamfer |
+|---|---|---|---|---|
+| Open3D TSDF | **0.969** | **0.93** | 0.148 | 4.43 |
+| ours TSDF kernel | 0.457 | 2.10 | 0.192 | 3.08 |
+| **ours surfel (Poisson)** | **0.953** | 1.07 | 0.362 | 2.51 |
+| **ours surfel + refine** | (0.888) | (1.96) | **0.517** | **2.47** |
+
+- **Clean: the surfel nearly matches Open3D** (F@2cm 0.953 vs 0.969) — the voxel
+  gap (0.457) is closed.
+- **5% noise: surfel + refine beats Open3D on every metric** (Chamfer 2.47 vs 4.43,
+  F@2cm 0.517 vs 0.148, F@5cm 0.942 vs 0.599). Refine helps noise (multi-view
+  averaging), hurts clean (perturbs perfect points) — use it only when noisy.
+- Slower (Poisson meshing, 6–10 s) → the precision/speed knob: TSDF kernel for speed
+  (noisy regime), surfel for precision. A GPU Poisson / direct surfel rendering is
+  the remaining speedup.
+
+## Tier-1 improvements
 
 - **#7 GPU Surface Nets mesher** (from scratch, replaces CPU marching cubes): meshing
   dropped from 0.2–2 s to 0.10–0.16 s, so **total time now beats Open3D by 1.6× / 5× /
