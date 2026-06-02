@@ -1,4 +1,24 @@
-# inhabit-kernel: from-scratch rebuild — Phases 0, 1, 2 results
+# inhabit-kernel: from-scratch rebuild — results
+
+## Tier-1 improvements (latest)
+
+- **#7 GPU Surface Nets mesher** (from scratch, replaces CPU marching cubes): meshing
+  dropped from 0.2–2 s to 0.10–0.16 s, so **total time now beats Open3D by 1.6× / 5× /
+  7.8×** at 0 / 2 / 5 % noise. Meshing is no longer the bottleneck.
+- **#8 finer voxels now affordable**: at 1.3 cm voxel, clean F@2cm 0.46→0.51 and ours
+  still wins quality+speed at noise (5 %: 2.86 vs 4.78 cm, 5.3× faster). Clean
+  sub-voxel precision still favours mature TSDF (needs the surfel rep, #12).
+- **#9 edge-preserving (bilateral) TSDF denoise** instead of Gaussian.
+- **#3 per-pixel model confidence as a fusion weight**: VGGT real-data Chamfer
+  **4.38 → 3.80 cm** (comp 6.73 → 5.65, F@5cm 0.86).
+- **#16 amodal completion**: from-scratch visual hull (loose under a single-height
+  ring — over-counts vertically) and **Poisson closure** (accurate watertight surface,
+  Chamfer 1.1 cm / F@2cm 0.95, better shape than a convex hull). Volume of unobserved
+  poles stays coverage-limited → a generative completer is the open piece.
+
+---
+
+# Phases 0, 1, 2 results
 
 Kernel-level rebuild, June 2026. Gitignored (internal).
 
