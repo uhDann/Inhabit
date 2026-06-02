@@ -19,11 +19,20 @@ This is the experimental rebuild branch; `main` holds the public submission.
 
 ## Headline results (see RESULTS.md for the full tables)
 
-- **Fusion is 0.04 s and noise-invariant** (7–37× faster than Open3D's fusion).
-- With the GPU Surface Nets mesher, **total time beats Open3D by 1.6–7.8×** across
-  noise levels; meshing is no longer the bottleneck.
-- **Quality wins in the noisy regime** (5% depth noise: Chamfer 2.6–3.1 vs 4.4 cm,
-  F@5cm ~0.9 vs 0.6). Clean low-noise fine precision still favours mature TSDF.
+- **Two surface modes** (`kernel.py` TSDF for speed, `surfel.py` for precision). Net:
+  the rebuild **matches Open3D on clean data and beats it under noise**, synthetic and
+  real. On real Replica room0 the surfel reaches Chamfer 1.25 / F@2cm 0.917 vs Open3D
+  1.27 / 0.912; at 5 % synthetic noise the surfel+refine beats Open3D on every metric.
+- **Fusion is 0.04 s and noise-invariant** (7–37× faster than Open3D's fusion); with
+  the GPU Surface Nets mesher, **total TSDF time beats Open3D by 1.6–7.8×**.
+- **Separable, physics-ready objects** dropped inside the reconstructed room (CoACD
+  collider): 8/8 no tunnelling under domain randomization.
+- **Feed-forward front ends on real RGB**: multi-view VGGT (3.80 cm) ≫ monocular
+  (7.78 cm); fully pose-free runs but is pose-limited.
+
+New files since the first commit: `surfel.py` (the precision representation, #12),
+`complete.py` (amodal completion), `bench_surfel.py` / `bench_complete.py` /
+`bench_vggt_pf.py` (benchmarks).
 - **Separable per-object meshes** (sphere/box 0.7–1.0 cm), made physics-ready
   (watertight collision proxies + mass), passing a domain-randomized Genesis drop
   eval (12/12 no tunnelling).
