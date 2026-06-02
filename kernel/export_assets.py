@@ -57,8 +57,27 @@ def main():
         nf = np.vectorize(remap.get)(sub_f)
         sm = trimesh.Trimesh(vertices=to_zup(verts[used]), faces=nf, process=False)
         if oid == 0:
+            # decimate the room shell to a light collision mesh (Genesis builds an SDF
+            # collider per mesh; the full ~1.8M-vert shell OOMs, ~25k tris is fine)
+            import open3d as o3d
+            om = o3d.geometry.TriangleMesh(
+                o3d.utility.Vector3dVector(sm.vertices.astype(np.float64)),
+                o3d.utility.Vector3iVector(sm.faces.astype(np.int32)))
+            om = om.simplify_quadric_decimation(25000)
+            om.remove_degenerate_triangles(); om.remove_unreferenced_vertices()
             path = f"{OUT}/room_shell.obj"
-            sm.export(path); assets["room"] = path
+            o3d.io.write_triangle_mesh(path, om)
+            assets["room"] = path; assets["room_tris"] = len(om.triangles)
+            # CoACD convex decomposition -> cheap convex colliders (no big mesh SDF,
+            # which OOMs Genesis on a large room bbox). This is the physics-ready room.
+            import coacd
+            rv = np.asarray(om.vertices); rf = np.asarray(om.triangles)
+            parts = coacd.run_coacd(coacd.Mesh(rv, rf), threshold=0.06, max_convex_hull=24)
+            ppaths = []
+            for i, (pv, pf) in enumerate(parts):
+                pp = f"{OUT}/room_part_{i:02d}.obj"
+                trimesh.Trimesh(pv, pf, process=False).export(pp); ppaths.append(pp)
+            assets["room_parts"] = ppaths
         else:
             hull = sm.convex_hull                     # watertight collision proxy
             ctr = hull.vertices.mean(0)

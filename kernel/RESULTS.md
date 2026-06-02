@@ -15,6 +15,17 @@
   ring — over-counts vertically) and **Poisson closure** (accurate watertight surface,
   Chamfer 1.1 cm / F@2cm 0.95, better shape than a convex hull). Volume of unobserved
   poles stays coverage-limited → a generative completer is the open piece.
+- **#2 pose-free front end**: fully feed-forward (VGGT depth + VGGT poses, Umeyama-
+  aligned only for scoring) runs end-to-end but pose error dominates (11.4 cm vs
+  3.80 cm with good poses) → needs global BA / loop closure.
+- **#25 multi-scene**: across 5 Replica scenes on clean GT depth Open3D wins fine
+  precision (its regime), ours is close on coarse F@5cm (0.96–0.99); the kernel's edge
+  is the noisy regime + speed.
+- **#21 + #18 room collider via CoACD**: the reconstructed room OOMs as a single
+  mesh-SDF collider in Genesis; CoACD splits it into 24 convex parts (cheap, no SDF).
+  Objects now drop INSIDE the reconstructed room under domain randomization: **8/8 no
+  tunnelling, 0 cm penetration** through the reconstructed floor/walls (stability lower
+  than on a flat plane because objects land on real reconstructed furniture).
 
 ---
 

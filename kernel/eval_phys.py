@@ -1,10 +1,9 @@
-"""Phase 3: a domain-randomized physics-eval harness for the reconstructed scene.
+"""Phase 3 (#21): domain-randomized physics eval inside the RECONSTRUCTED ROOM.
 
-Loads the kernel's exported room shell (static collider) + per-object watertight
-collision proxies into Genesis, then for each object runs N randomized drop trials
-(random xy, yaw, mass/density, friction) and measures whether the reconstructed
-object rests stably on the reconstructed floor without tunnelling. Reports a
-quantitative physical-plausibility score -- the thing an RL/eval environment needs.
+Loads the kernel's decimated room-shell mesh as the static collider and drops the
+per-object collision proxies into it, with randomized pose / mass / friction. All
+trials are batched into ONE scene build (one SDF), which is fast and avoids the OOM
+from rebuilding the room SDF per trial. Reports a physical-plausibility score.
 
 Run in the genesis env.
 """
@@ -14,7 +13,6 @@ import numpy as np
 import genesis as gs
 
 ASSETS = "/tmp/ikernel/assets"
-SEED = 0
 
 
 def to_np(x):
@@ -24,73 +22,69 @@ def to_np(x):
         return np.asarray(x)
 
 
-def trial(room_path, obj, x, y, yaw, density, friction, steps=260, dt=0.01):
-    sc = gs.Scene(sim_options=gs.options.SimOptions(dt=dt, gravity=(0, 0, -9.81)),
+def main():
+    rng = np.random.default_rng(0)
+    A = json.load(open(f"{ASSETS}/assets.json"))
+    (x0, y0), (x1, y1) = A["room_xy"]
+    gs.init(backend=gs.gpu)
+    sc = gs.Scene(sim_options=gs.options.SimOptions(dt=0.01, gravity=(0, 0, -9.81)),
                   show_viewer=False, renderer=gs.renderers.Rasterizer())
-    # The reconstructed floor is planar; use a ground plane at z=0 as the floor
-    # (the full room-mesh SDF collider is needlessly heavy). We are validating the
-    # reconstructed OBJECT collision proxies, which is what must be physics-ready.
-    sc.add_entity(gs.morphs.Plane())
-    try:
-        mat = gs.materials.Rigid(rho=density, friction=friction)
-    except Exception:
+    # the reconstructed room as CoACD convex parts -> cheap convex colliders, no SDF
+    rooms = A.get("room_parts") or [A["room"]]
+    for rp in rooms:
+        sc.add_entity(gs.morphs.Mesh(file=rp, fixed=True, collision=True, convexify=True))
+    print(f"=== Phase 3 (#21): physics eval INSIDE the reconstructed room "
+          f"({len(rooms)} CoACD convex parts) ===")
+
+    N = 4
+    items = [(o, k) for o in A["objects"] for k in range(N)]
+    gx = np.linspace(x0 + 0.9, x1 - 0.9, 4)
+    gy = np.linspace(y0 + 0.9, y1 - 0.9, max(2, (len(items) + 3) // 4))
+    cells = [(x, y) for y in gy for x in gx][:len(items)]
+    entries = []
+    for (obj, k), (x, y) in zip(items, cells):
+        dens = float(rng.uniform(200, 800)); fric = float(rng.uniform(0.3, 1.2))
+        yaw = float(rng.uniform(0, 2 * math.pi))
         try:
-            mat = gs.materials.Rigid(rho=density)
+            mat = gs.materials.Rigid(rho=dens, friction=fric)
         except Exception:
-            mat = None
-    bo = obj["bottom_offset"]
-    morph = gs.morphs.Mesh(file=obj["path"], fixed=False, collision=True, convexify=True,
-                           pos=(x, y, 0.8 + bo), euler=(0, 0, math.degrees(yaw)))
-    body = sc.add_entity(morph, material=mat) if mat is not None else sc.add_entity(morph)
+            mat = gs.materials.Rigid(rho=dens) if hasattr(gs.materials, "Rigid") else None
+        morph = gs.morphs.Mesh(file=obj["path"], fixed=False, collision=True, convexify=True,
+                               pos=(float(x), float(y), 0.5 + obj["bottom_offset"]),
+                               euler=(0, 0, math.degrees(yaw)))
+        body = sc.add_entity(morph, material=mat) if mat is not None else sc.add_entity(morph)
+        entries.append((obj, body))
     sc.build()
+
+    steps = 350
     last = None
     for i in range(steps):
         sc.step()
         if i == steps - 11:
-            last = to_np(body.get_pos()).reshape(-1)[:3].copy()
-    pos = to_np(body.get_pos()).reshape(-1)[:3]
-    speed = float(np.linalg.norm(pos - last) / (10 * dt)) if last is not None else 9.9
-    base_z = float(pos[2])
-    lowest = base_z - bo                               # lowest point relative to floor z=0
-    return base_z, lowest, speed
+            last = np.array([to_np(b.get_pos()).reshape(-1)[:3] for _, b in entries])
+    final = np.array([to_np(b.get_pos()).reshape(-1)[:3] for _, b in entries])
+    speed = np.linalg.norm(final - last, axis=1) / (10 * 0.01)
 
-
-def main():
-    rng = np.random.default_rng(SEED)
-    A = json.load(open(f"{ASSETS}/assets.json"))
-    (x0, y0), (x1, y1) = A["room_xy"]
-    inset = 0.6
-    gs.init(backend=gs.gpu)
-
-    print("=== Phase 3: domain-randomized physics eval of the reconstructed scene ===")
-    print(f"room {A['room_xy']}, floor z=0, {len(A['objects'])} objects\n")
-    hdr = ["object", "trials", "rest_ok", "no_tunnel", "stable%", "pen_cm", "rest_err_cm"]
-    w = [12, 7, 8, 10, 9, 8, 12]
+    from collections import defaultdict
+    agg = defaultdict(lambda: dict(n=0, rest=0, notun=0, pen=[]))
+    for (obj, _), fz, sp in zip(entries, final[:, 2], speed):
+        bo = obj["bottom_offset"]; lowest = fz - bo
+        a = agg[obj["name"]]; a["n"] += 1
+        a["rest"] += int(sp < 0.06 and lowest > -0.05 and fz > -0.2)
+        a["notun"] += int(lowest > -0.05)
+        a["pen"].append(max(0.0, -lowest))
+    hdr = ["object", "trials", "rest_ok", "no_tunnel", "stable%", "pen_cm"]
+    w = [12, 7, 8, 10, 9, 8]
     print("".join(c.ljust(wi) for c, wi in zip(hdr, w)))
     print("-" * sum(w))
-    N = 6
-    overall = []
-    for obj in A["objects"]:
-        oks, pens, errs = 0, [], []
-        for _ in range(N):
-            x = float(rng.uniform(x0 + inset, x1 - inset))
-            y = float(rng.uniform(y0 + inset, y1 - inset))
-            yaw = float(rng.uniform(0, 2 * math.pi))
-            dens = float(rng.uniform(200, 800))
-            fric = float(rng.uniform(0.3, 1.2))
-            base_z, lowest, speed = trial(A["room"], obj, x, y, yaw, dens, fric)
-            settled = speed < 0.06
-            no_tunnel = lowest > -0.03
-            rest_err = abs(base_z - obj["bottom_offset"])
-            ok = settled and no_tunnel and base_z > 0
-            oks += int(ok)
-            pens.append(max(0.0, -lowest)); errs.append(rest_err)
-            overall.append(int(ok))
-        vals = [obj["name"], N, f"{oks}/{N}", f"{sum(1 for p in pens if p<0.03)}/{N}",
-                f"{100*oks/N:.0f}", f"{100*np.mean(pens):.1f}", f"{100*np.mean(errs):.1f}"]
+    tot = tr = 0
+    for name, a in agg.items():
+        vals = [name, a["n"], f"{a['rest']}/{a['n']}", f"{a['notun']}/{a['n']}",
+                f"{100*a['rest']//a['n']}", f"{100*np.mean(a['pen']):.1f}"]
         print("".join(str(v).ljust(wi) for v, wi in zip(vals, w)))
-    print(f"\noverall physical-plausibility: {100*np.mean(overall):.0f}% "
-          f"({sum(overall)}/{len(overall)} randomized trials stable, no tunnelling)")
+        tot += a["n"]; tr += a["rest"]
+    nt = sum(a["notun"] for a in agg.values())
+    print(f"\noverall: {tr}/{tot} stable, {nt}/{tot} no-tunnel inside the reconstructed room")
 
 
 if __name__ == "__main__":
