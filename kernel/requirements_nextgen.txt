@@ -1,0 +1,18 @@
+# Next-gen (photoreal mesh + separation) deps. torch/numpy assumed already present.
+# Install SAM 2 (facebookresearch/sam2) and a 3DGS trainer (gsplat) from their own repos.
+
+# --- photoreal appearance ---
+nvdiffrast           # differentiable rasterizer + analytic anti-aliasing
+xatlas               # UV unwrap
+lpips                # perceptual loss + metric
+dreamsim             # real-vs-render perceptual metric (human-correlated)
+scikit-image         # SSIM
+trimesh              # mesh IO / normals
+plyfile              # gsplat .ply loading
+imageio              # frame / depth IO
+gsplat               # 3DGS teacher (also installable from source)
+
+# --- separation ---
+scipy                # Hungarian assignment (linear_sum_assignment)
+Pillow               # frame IO for SAM2 seeding
+# sam2  -> install from github.com/facebookresearch/sam2 (not on PyPI)
