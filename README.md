@@ -4,8 +4,6 @@ Turn a phone video of a room into a 3D model that is correct to real-world scale
 
 **Live site:** [www.inhabit.danilakozlov.com](https://www.inhabit.danilakozlov.com) (interactive 3D viewers and all the results).
 
-Built for Humanoid's *From Video to 3D Reconstruction* challenge.
-
 <p align="center">
   <img src="docs/figures/teaser.gif" width="85%" alt="phone capture to metric 3D reconstruction to a robot walking through the room"/><br/>
   <em>The whole thing in one shot: phone capture, then a metric 3D reconstruction, then a robot walking around the reconstructed room at real scale.</em>
