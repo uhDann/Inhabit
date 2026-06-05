@@ -26,13 +26,14 @@ def main():
     ap.add_argument("--mesh", required=True); ap.add_argument("--appearance", required=True)
     ap.add_argument("--replica"); ap.add_argument("--img_dir"); ap.add_argument("--poses")
     ap.add_argument("--K", nargs=4, type=float); ap.add_argument("--scale", type=float, default=0.5)
+    ap.add_argument("--stride", type=int, default=1, help="must match train --stride for an identical held-out split")
     ap.add_argument("--splat_dir", help="optional pre-rendered 3DGS images for the test poses")
     ap.add_argument("--out", default="runs/photoreal/eval")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     dev = "cuda"
 
-    ds = (D.load_replica(a.replica, a.scale) if a.replica
+    ds = (D.load_replica(a.replica, a.scale, stride=a.stride) if a.replica
           else D.load_folder(a.img_dir, a.poses, a.K, a.scale))
     W, H = ds["W"], ds["H"]
     v, f, _ = load_mesh(a.mesh)

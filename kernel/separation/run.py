@@ -32,13 +32,21 @@ def main():
     ap.add_argument("--voxel", type=float, default=0.02)
     ap.add_argument("--sam2_cfg", required=True); ap.add_argument("--sam2_ckpt", required=True)
     ap.add_argument("--out", default="runs/separation")
+    ap.add_argument("--margin", type=float, default=1.3,
+                    help="superpoint vote margin to commit to an object vs falling back to shell")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True); dev = "cuda"
     K = tuple(a.K)
 
-    # 1. real view-consistent masks
-    print("running SAM2 video masks...", flush=True)
-    masks = sam2_video_masks(a.frames_dir, a.sam2_cfg, a.sam2_ckpt, device=dev)
+    # 1. real view-consistent masks (cached: SAM2 is the expensive GPU step)
+    cache = f"{a.out}/sam2_masks.npy"
+    if os.path.exists(cache):
+        print("loading cached SAM2 masks", cache, flush=True)
+        masks = list(np.load(cache))
+    else:
+        print("running SAM2 video masks...", flush=True)
+        masks = sam2_video_masks(a.frames_dir, a.sam2_cfg, a.sam2_ckpt, device=dev)
+        np.save(cache, np.stack(masks))
     n_labels = int(max(m.max() for m in masks)) + 1
     print(f"{len(masks)} frames, {n_labels-1} tracked objects", flush=True)
 
@@ -72,8 +80,27 @@ def main():
     # 5. superpoint pooling -> clean per-vertex object labels (shell = 0)
     nrm = np.asarray(trimesh.Trimesh(verts, faces, process=False).vertex_normals, np.float32)
     sp, n_sp = superpoints(verts, faces, nrm)
-    vlab = pool_votes(sp, n_sp, vert_votes, ker.n_labels)
-    print(f"{n_sp} superpoints, {len(np.unique(vlab))-1} objects after pooling", flush=True)
+    vlab = pool_votes(sp, n_sp, vert_votes, ker.n_labels, margin=a.margin)
+
+    # 5b. geometric shell-forcing: a label that is large AND near-horizontal (mean |n_z| high)
+    # OR spans most of the room footprint is floor/ceiling -> force to room shell (0).
+    ext = verts.max(0) - verts.min(0)
+    foot = ext[0] * ext[1]
+    for oid in np.unique(vlab):
+        if oid == 0:
+            continue
+        mv = vlab == oid
+        if mv.sum() < 50:
+            continue
+        horiz = float(np.abs(nrm[mv, 2]).mean())                  # 1 = perfectly horizontal
+        bb = verts[mv].max(0) - verts[mv].min(0)
+        spans = (bb[0] * bb[1]) / (foot + 1e-9)
+        thin = bb[2] < 0.12                                       # flat slab
+        # only force truly room-scale planes to shell: floor/ceiling (horizontal flat slab)
+        # or something spanning almost the whole footprint (a wall). Keep furniture.
+        if (horiz > 0.85 and thin) or spans > 0.80:
+            vlab[mv] = 0
+    print(f"{n_sp} superpoints, {len(np.unique(vlab))-1} objects after pooling + shell-forcing", flush=True)
 
     # 6. split into room shell + per-object meshes
     lf = vlab[faces]; a3, b3, c3 = lf[:, 0], lf[:, 1], lf[:, 2]

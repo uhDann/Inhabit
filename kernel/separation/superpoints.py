@@ -39,15 +39,14 @@ def superpoints(verts, faces, normals, normal_thresh=0.92, max_size=4000):
 def pool_votes(sp, n_sp, vert_votes, n_labels, margin=1.3):
     """vert_votes[V,n_labels] -> per-vertex object label after pooling per superpoint.
     A superpoint commits to an object only if its top vote beats the runner-up by
-    `margin` and beats the shell (label 0); else -> shell (0)."""
-    out = np.zeros(len(sp), np.int32)
-    for s in range(n_sp):
-        m = sp == s
-        if not m.any():
-            continue
-        agg = vert_votes[m].sum(0)                       # [n_labels]
-        top = int(agg.argmax())
-        srt = np.sort(agg)[::-1]
-        conf = srt[0] > margin * (srt[1] + 1e-6)
-        out[m] = top if (conf and top != 0) else 0       # 0 = room shell
-    return out
+    `margin` and beats the shell (label 0); else -> shell (0).
+
+    Vectorised: aggregate all votes per superpoint with one scatter-add (O(V+n_sp)),
+    not a Python loop over superpoints (which is O(n_sp*V) and unusable at 1.5M verts)."""
+    agg = np.zeros((n_sp, n_labels), np.float64)
+    np.add.at(agg, sp, vert_votes)                       # sum votes per superpoint
+    top = agg.argmax(1)                                  # [n_sp]
+    srt = np.sort(agg, 1)[:, ::-1]
+    conf = srt[:, 0] > margin * (srt[:, 1] + 1e-6)
+    sp_label = np.where(conf & (top != 0), top, 0).astype(np.int32)  # 0 = room shell
+    return sp_label[sp]                                  # broadcast back to vertices

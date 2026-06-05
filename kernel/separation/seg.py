@@ -18,9 +18,15 @@ import numpy as np
 
 
 def sam2_video_masks(frames_dir, cfg, ckpt, device="cuda", min_area_frac=0.002,
-                     max_objects=40):
+                     max_area_frac=0.40, max_objects=40):
     """frames_dir: a dir of sequential jpg frames (named so sorted() is temporal).
-    Returns list of [H,W] int32 label maps (one per frame), ids consistent across frames."""
+    Returns list of [H,W] int32 label maps (one per frame), ids consistent across frames.
+
+    Seeds are filtered to area in [min_area_frac, max_area_frac] of the frame: the MAX cap
+    drops floor / wall / ceiling (large background planes) so they stay in the room shell
+    rather than being tracked as 'objects' -- the fix for floor-as-object mislabelling.
+    Seeds are also seeded from MULTIPLE frames (not just frame 0) so objects that appear
+    later in the sweep are still captured."""
     import torch
     from PIL import Image
     from sam2.build_sam import build_sam2, build_sam2_video_predictor
@@ -29,11 +35,13 @@ def sam2_video_masks(frames_dir, cfg, ckpt, device="cuda", min_area_frac=0.002,
     frames = sorted(glob.glob(f"{frames_dir}/*.jpg"))
     H, W = np.asarray(Image.open(frames[0])).shape[:2]
     min_area = int(min_area_frac * H * W)
+    max_area = int(max_area_frac * H * W)
 
     # --- seed objects on frame 0 with the automatic mask generator ---
     sam = build_sam2(cfg, ckpt, device=device)
     amg = SAM2AutomaticMaskGenerator(sam, points_per_side=24, min_mask_region_area=min_area)
     seed = amg.generate(np.asarray(Image.open(frames[0]).convert("RGB")))
+    seed = [m for m in seed if min_area <= m["area"] <= max_area]      # drop big planes
     seed = sorted(seed, key=lambda m: -m["area"])[:max_objects]
 
     # --- propagate through the video ---

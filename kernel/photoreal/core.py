@@ -19,12 +19,16 @@ import torch.nn as nn
 
 # --------------------------------------------------------------------- cameras
 def opengl_projection(fx, fy, cx, cy, W, H, near=0.01, far=100.0):
-    """OpenGL clip-space projection from OpenCV pinhole intrinsics."""
+    """OpenGL clip-space projection from OpenCV pinhole intrinsics.
+
+    The y row is negated so the nvdiffrast rasteriser (bottom-left origin) produces
+    images in TOP-left-origin order, matching numpy/PIL image arrays. Without this every
+    mesh render is vertically flipped vs the GT frame, which silently caps PSNR (~15 dB)."""
     P = np.zeros((4, 4), np.float32)
     P[0, 0] = 2 * fx / W
-    P[1, 1] = 2 * fy / H
+    P[1, 1] = -2 * fy / H                       # flip y -> top-left-origin output
     P[0, 2] = 1.0 - 2 * cx / W
-    P[1, 2] = 2 * cy / H - 1.0
+    P[1, 2] = -(2 * cy / H - 1.0)               # = 1 - 2*cy/H
     P[2, 2] = -(far + near) / (far - near)
     P[2, 3] = -2 * far * near / (far - near)
     P[3, 2] = -1.0
@@ -130,6 +134,47 @@ class Renderer:
         col = col * vis + bg * (1 - vis)
         col = dr.antialias(col[None], rast, clip[None], faces)[0]          # soft edges
         return col
+
+
+@torch.no_grad()
+def bake_diffuse(renderer, verts, faces, uvs, normals, frames, atlas, W, H, device="cuda"):
+    """Multi-view texture baking: project each posed GT frame onto the mesh and
+    accumulate per-texel colour, view-weighted (front-facing, fronto-parallel preferred).
+    Returns a diffuse atlas [atlas,atlas,3]. This is the stable starting point that makes
+    the mesh look like the room; learned view-dependent appearance refines on top.
+    """
+    dr = renderer.dr
+    acc = torch.zeros(atlas * atlas, 3, device=device)
+    wsum = torch.zeros(atlas * atlas, 1, device=device)
+    vh = torch.cat([verts, torch.ones(verts.shape[0], 1, device=device)], 1)
+    for rgb, pose, K in frames:
+        gt = torch.as_tensor(rgb, device=device)
+        mvp, cp = mvp_from_pose(pose, K, W, H)
+        clip = vh @ torch.as_tensor(mvp.T, device=device)
+        rast, _ = dr.rasterize(renderer.glctx, clip[None], faces, (H, W))
+        uv_i, _ = dr.interpolate(uvs[None], rast, faces)
+        nrm_i, _ = dr.interpolate(normals[None], rast, faces)
+        pos_i, _ = dr.interpolate(verts[None], rast, faces)
+        vis = (rast[0, ..., 3] > 0)
+        view = torch.as_tensor(cp, device=device) - pos_i[0]
+        view = view / (view.norm(dim=-1, keepdim=True) + 1e-9)
+        nrm = nrm_i[0] / (nrm_i[0].norm(dim=-1, keepdim=True) + 1e-9)
+        # winding-agnostic (surface-nets normals flip): |cos|, fronto-parallel preferred,
+        # but NEVER zero-gate a visible pixel (rasteriser already gives the front surface).
+        cos = (nrm * view).sum(-1).abs().clamp(min=0.1)
+        w = cos * vis.float()
+        u = uv_i[0, ..., 0].clamp(0, 1)
+        vv = uv_i[0, ..., 1].clamp(0, 1)
+        col = (u * (atlas - 1)).long()                                 # u -> column
+        row = ((1.0 - vv) * (atlas - 1)).long()                        # nvdiffrast texture origin is bottom-left
+        lin = row * atlas + col
+        m = w > 1e-4
+        lin_m = lin[m]; rgb_m = gt[m]; w_m = w[m][:, None]
+        acc.index_add_(0, lin_m, rgb_m * w_m)
+        wsum.index_add_(0, lin_m, w_m)
+    diffuse = acc / (wsum + 1e-8)
+    diffuse[wsum[:, 0] < 1e-8] = 0.5                                   # unseen texels -> neutral
+    return diffuse.view(atlas, atlas, 3)
 
 
 def core_selftest(mesh_path, pose_c2w, K, W, H, out="selftest.png", device="cuda"):

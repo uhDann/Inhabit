@@ -13,12 +13,18 @@ from PIL import Image
 REPLICA_DEPTH_SCALE = 6553.5
 
 
+def _m8(x):
+    """nvdiffrast's CUDA rasterizer requires resolution divisible by 8."""
+    return max(8, int(round(x / 8.0)) * 8)
+
+
 def load_replica(scene_dir, scale=0.5, stride=1, holdout=8):
     """Replica scene dir (.../room0) with results/frame*.jpg + traj.txt.
     Returns dict with train/test lists of (rgb, pose, K) and W,H."""
     W0, H0 = 1200, 680
-    W, H = int(W0 * scale), int(H0 * scale)
-    K = (600 * scale, 600 * scale, 599.5 * scale, 339.5 * scale)
+    W, H = _m8(W0 * scale), _m8(H0 * scale)
+    sx, sy = W / W0, H / H0                       # anisotropic: keep intrinsics consistent
+    K = (600 * sx, 600 * sy, 599.5 * sx, 339.5 * sy)
     traj = np.loadtxt(f"{scene_dir}/traj.txt").reshape(-1, 4, 4)
     rgbs = sorted(glob.glob(f"{scene_dir}/results/frame*.jpg"))
     idx = list(range(0, len(rgbs), stride))
@@ -37,8 +43,10 @@ def load_folder(img_dir, poses_npy, K, scale=1.0, holdout=8):
     paths = sorted(glob.glob(f"{img_dir}/*.jpg") + glob.glob(f"{img_dir}/*.png"))
     assert len(paths) == len(poses), "image/pose count mismatch"
     im0 = Image.open(paths[0]); W0, H0 = im0.size
-    W, H = int(W0 * scale), int(H0 * scale)
-    Ks = tuple(np.array(K) * scale)
+    W, H = _m8(W0 * scale), _m8(H0 * scale)       # multiple of 8 for nvdiffrast
+    sx, sy = W / W0, H / H0
+    fx, fy, cx, cy = K
+    Ks = (fx * sx, fy * sy, cx * sx, cy * sy)
     train, test = [], []
     for k, (p, pose) in enumerate(zip(paths, poses)):
         rgb = np.asarray(Image.open(p).convert("RGB").resize((W, H), Image.BILINEAR)).astype(np.float32) / 255.0
