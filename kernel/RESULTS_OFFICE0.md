@@ -35,6 +35,24 @@ the eval/render is broken, not the geometry.
   — run it on the splat-derived mesh (`photoreal/mesh_from_splat.py`), not a thin decimated
   reconstruction.
 
+## Generalization (3 Replica scenes, same pipeline)
+
+| Scene | Splat PSNR | Textured-mesh PSNR | SSIM | Instances |
+|---|---|---|---|---|
+| office0 | 43.2 | 33.1 | 0.969 | 23 |
+| room0 | 35.4 | 28.4 | 0.880 | 67 |
+| office1 | 36.1 | 29.9 | 0.904 | 21 |
+
+## Experiments that did NOT help (honest)
+
+- **Splat->mesh distillation** (`distill` style: bake + view-dep residual trained on real
+  frames AND novel splat-rendered poses): **27.1 PSNR**, *worse* than the 33.1 projective
+  bake. Novel-pose splat supervision on mismatched mesh geometry injects error. Bake wins.
+- **Physics drop test** (`physics/`): the Genesis sim is valid (no OOM after CoACD), but the
+  separated furniture are surface fragments, so only ~3/23 stay within 5 cm — they fall to
+  the floor rather than rest as furniture. Both separation and physics are bottlenecked by
+  the same upstream limit: **furniture geometry completeness**, not the method.
+
 ## Pipeline (office0)
 
 ```
