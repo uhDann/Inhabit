@@ -43,6 +43,25 @@ the eval/render is broken, not the geometry.
 | room0 | 35.4 | 28.4 | 0.880 | 67 |
 | office1 | 36.1 | 29.9 | 0.904 | 21 |
 
+## Closing the geometry gap (full-res, 63 held-out views)
+
+The half-res PSNR (33) was partly a downsampling artifact; at native 1200x680 the gap is
+real. Differentiable vertex refinement (`photoreal/refine_vertices.py`) closes a meaningful
+chunk of it -- but ONLY with strong Laplacian smoothing:
+
+| office0 (full res) | PSNR | SSIM | LPIPS | FID(real) |
+|---|---|---|---|---|
+| mesh-from-splat (baseline) | 26.7 | 0.937 | 0.234 | 74.3 |
+| + vertex refine, weak reg (LAP 8) | 34.1 | 0.925 | 0.339 | **98.0** (worse) |
+| + vertex refine, **strong reg (LAP 40)** | **35.6** | **0.944** | 0.288 | **61.2** |
+| splat (reference) | 39.0 | 0.966 | 0.232 | 30.7 |
+
+Non-obvious finding: the method is **regularisation-gated**. Weak smoothness overfits train
+views with rough deformation and makes FID WORSE; strong smoothness gives the alignment gain
+(PSNR +8.9 dB, SSIM up, FID 74->61) without the realism penalty. Mean vertex offset 48mm
+(weak) vs 27mm (strong). A naive "just optimise vertices against photometry" reimplementation
+is actively harmful. Confidence-masked depth fusion was tried first and FAILED (FID 74->167).
+
 ## Experiments that did NOT help (honest)
 
 - **Splat->mesh distillation** (`distill` style: bake + view-dep residual trained on real
