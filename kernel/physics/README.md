@@ -46,7 +46,21 @@ Proof-of-life (office0, per-object Genesis stability — drop 1 cm onto support,
 
 The support graph (fill to the floor OR to another object's top) is the key refinement: it
 halves mean drift (14.1->8.2 cm) by giving elevated objects real supports instead of phantom
-floor-columns. From raw fragments: 9->17 stable, 7.5->1.0 cm median drift. The remaining
-~6 unstable objects are thin/odd shapes; next levers are symmetry-fill and per-object
-collision-margin tuning. This is the working kernel of a "video -> physics-true simulatable
-world" thesis.
+floor-columns. From raw fragments: 9->17 stable, 7.5->1.0 cm median drift.
+
+### Compounding with a better geometry backbone (PGSR)
+
+Swapping the lossy TSDF mesh-from-splat for a surface-aligned PGSR mesh (FID 74->61, LPIPS
+0.234->0.203) propagates all the way through: cleaner separation (34 balanced instances,
+support split 17 floor / 17 on-object) -> physics-completion -> **28/34 (82%) stable,
+mean drift 2.9 cm** (vs 8.2 cm on our mesh). The whole reconstructed scene becomes nearly
+physically static (objects rest where reconstructed) -- a sim-ready scene from passive video.
+
+| stability | stable (<3cm) | mean drift | median |
+|---|---|---|---|
+| raw fragments (our mesh) | 9/23 (39%) | 17.6 cm | 7.5 cm |
+| completed v2 (our mesh) | 17/23 (74%) | 8.2 cm | 1.0 cm |
+| **completed (PGSR mesh)** | **28/34 (82%)** | **2.9 cm** | 1.0 cm |
+
+The chain "better geometry -> crisper objects -> better physics-completion -> near-stable
+simulatable world" is the working kernel of the video -> physics-true world thesis.

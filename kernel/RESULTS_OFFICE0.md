@@ -62,6 +62,23 @@ views with rough deformation and makes FID WORSE; strong smoothness gives the al
 (weak) vs 27mm (strong). A naive "just optimise vertices against photometry" reimplementation
 is actively harmful. Confidence-masked depth fusion was tried first and FAILED (FID 74->167).
 
+## Surface-aligned mesh (PGSR) replaces the lossy TSDF handoff
+
+Our biggest geometry weakness was extracting the mesh from the splat's *expected* depth
+(edge bias, foreground-only). Training PGSR (surface-aligned splatting; `replica_to_colmap.py`
+prepares the data) and fusing its unbiased depth gives a cleaner mesh:
+
+| office0 (full res) | PSNR | SSIM | LPIPS | FID |
+|---|---|---|---|---|
+| our mesh-from-splat (TSDF) | 26.7 | 0.937 | 0.234 | 74.3 |
+| **PGSR mesh (surface-aligned)** | 26.9 | 0.945 | **0.203** | **61.4** |
+| splat | 39.0 | 0.966 | 0.232 | 30.7 |
+
+PGSR matches our vertex-refinement result (FID ~61) for free and beats the splat on LPIPS.
+PSNR similar (the ~12 dB mesh-vs-splat gap is alignment, unchanged). The real payoff is
+downstream: cleaner geometry -> crisper separation -> physics-completion -> 82% stable / 2.9 cm
+mean drift (see `physics/README.md`).
+
 ## Experiments that did NOT help (honest)
 
 - **Splat->mesh distillation** (`distill` style: bake + view-dep residual trained on real
