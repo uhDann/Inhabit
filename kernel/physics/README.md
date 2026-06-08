@@ -38,11 +38,15 @@ novel slice (cf. Vysics, which does this only for a single object with active ro
 
 Proof-of-life (office0, per-object Genesis stability — drop 1 cm onto support, 300 steps):
 
-| input | watertight | stable (<3cm drift) | median drift |
-|---|---|---|---|
-| partial fragments | no | 9/23 | 7.5 cm |
-| **physics-completed** | **yes (23/23)** | **13/23** | **2.2 cm** (3.4x better) |
+| input | watertight | stable (<3cm drift) | mean drift | median drift |
+|---|---|---|---|---|
+| partial fragments | no | 9/23 | 17.6 cm | 7.5 cm |
+| completed v1 (fill-to-floor) | yes | 13/23 | 14.1 cm | 2.2 cm |
+| **completed v2 (support graph)** | **yes** | **17/23** | **8.2 cm** | **1.0 cm** |
 
-Honest status: real, measured improvement (median drift 3.4x lower; all objects watertight)
-but partial — the remaining unstable objects are elevated items whose support graph / fill
-needs refinement. This is the kernel of a "video -> physics-true simulatable world" thesis.
+The support graph (fill to the floor OR to another object's top) is the key refinement: it
+halves mean drift (14.1->8.2 cm) by giving elevated objects real supports instead of phantom
+floor-columns. From raw fragments: 9->17 stable, 7.5->1.0 cm median drift. The remaining
+~6 unstable objects are thin/odd shapes; next levers are symmetry-fill and per-object
+collision-margin tuning. This is the working kernel of a "video -> physics-true simulatable
+world" thesis.
