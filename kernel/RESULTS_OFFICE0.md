@@ -62,6 +62,19 @@ views with rough deformation and makes FID WORSE; strong smoothness gives the al
 (weak) vs 27mm (strong). A naive "just optimise vertices against photometry" reimplementation
 is actively harmful. Confidence-masked depth fusion was tried first and FAILED (FID 74->167).
 
+## Task-transfer: measuring the reconstruction by ROBOT UTILITY (`eval_navmesh.py`)
+
+The field benchmarks reconstructions on pixels (PSNR/FID), which it admits do not predict
+downstream task success. We measure NAVIGABILITY transfer instead: recompute a robot navmesh
+(Habitat/Recast) on the GT scene and on our reconstructed twin, then check how many real
+shortest paths reproduce in the twin.
+
+office0 (twin = PGSR mesh): **81/100 GT navigation paths reproducible, 0% median path-length
+error**, navigable-area ratio 1.58. So an agent navigating the twin follows the same paths it
+would in reality 81% of the time, at correct distances. Honest caveat: the 1.58 ratio means
+the twin is slightly too open (thin/missing furniture obstacles) -- exactly why it is 81%,
+not 100%. This is the differentiated, field-relevant axis (task utility, not pixels).
+
 ## Surface-aligned mesh (PGSR) replaces the lossy TSDF handoff
 
 Our biggest geometry weakness was extracting the mesh from the splat's *expected* depth
